@@ -1,6 +1,7 @@
 {
   "generatedBy": "scripts/harvest.mjs",
-  "provider": "pexels",
+  "provider": "openverse",
+  "completedQueries": [],
   "images": [
     {
       "id": "openverse-21e34394-8f7c-4c15-8a9e-e79854a84be9",

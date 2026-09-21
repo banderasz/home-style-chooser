@@ -142,13 +142,18 @@ export const STYLES = [
   },
 ]
 
+// "interior design" is the phrase stock libraries attach to staged, wide, whole-room
+// photography. Without it, "scandinavian kitchen" returns as many worktop vignettes and
+// product shots as rooms. The suffix is appended to every style x room query.
+export const ROOM_QUERY_SUFFIX = 'interior design'
+
 export const ROOMS = [
   { id: 'living', label: 'Living room', queries: ['living room'] },
   { id: 'kitchen', label: 'Kitchen', queries: ['kitchen'] },
   { id: 'bathroom', label: 'Bathroom', queries: ['bathroom'] },
   { id: 'bedroom', label: 'Bedroom', queries: ['bedroom'] },
   { id: 'dining', label: 'Dining room', queries: ['dining room'] },
-  { id: 'office', label: 'Home office', queries: ['home office study'] },
+  { id: 'office', label: 'Home office', queries: ['home office'] },
 ]
 
 export const STYLE_IDS = STYLES.map((s) => s.id)

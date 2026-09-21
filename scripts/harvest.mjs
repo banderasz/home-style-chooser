@@ -14,7 +14,7 @@
 import { writeFile, readFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { STYLES, ROOMS } from './taxonomy.mjs'
+import { STYLES, ROOMS, ROOM_QUERY_SUFFIX } from './taxonomy.mjs'
 import { ATTRIBUTES } from './attributes.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -32,6 +32,11 @@ const PER_QUERY = Number(flag('per', 10))
 // Phrasings used per adjective. 1 keeps the whole run (23x6 styles + 45 adjectives =
 // 183 queries) under the Pexels free tier's 200/hour; 2 adds variety across two windows.
 const ATTR_QUERIES = Number(flag('attr-queries', 1))
+// Minimum width/height. 1.4 keeps 3:2 and 16:9 room shots, drops square detail crops.
+const MIN_ASPECT = Number(flag('min-aspect', 1.4))
+// Restrict the style axis to certain rooms, e.g. --rooms living,kitchen,bedroom to
+// deepen the rooms people actually judge a home by.
+const ONLY_ROOMS = (flag('rooms', '') || '').split(',').filter(Boolean)
 const OUT = resolve(ROOT, flag('out', 'src/data/catalog.json'))
 const PROVIDER = flag('provider', process.env.PEXELS_API_KEY ? 'pexels' : 'openverse')
 const RESET = has('reset')
@@ -132,7 +137,10 @@ const providers = {
       url.searchParams.set('orientation', 'landscape')
       url.searchParams.set('size', 'medium')
       const body = await getJson(url, { Authorization: process.env.PEXELS_API_KEY })
-      return (body.photos ?? []).map((p) => ({
+      return (body.photos ?? [])
+        // A whole room is a wide frame. Anything near-square is a detail crop.
+        .filter((p) => !p.width || !p.height || p.width / p.height >= MIN_ASPECT)
+        .map((p) => ({
         id: `pexels-${p.id}`,
         url: p.src.large2x ?? p.src.large,
         thumbnail: p.src.medium ?? p.src.small,
@@ -286,14 +294,20 @@ async function main() {
   const jobs = []
   let n = 0
   if (AXIS === 'styles' || AXIS === 'both') {
+    const rooms = ONLY_ROOMS.length > 0 ? ROOMS.filter((r) => ONLY_ROOMS.includes(r.id)) : ROOMS
+    if (ONLY_ROOMS.length > 0) {
+      process.stderr.write(`rooms limited to: ${rooms.map((r) => r.id).join(', ')}\n`)
+    }
     for (const style of STYLES) {
-      for (const room of ROOMS) {
+      for (const room of rooms) {
         // Rotate phrasings so the catalog isn't all one wording's results.
         const phrase = style.queries[n % style.queries.length]
         jobs.push({
-          key: `${style.id}|${room.id}`,
+          // The key embeds the query text, so changing the phrasing makes it a new job
+          // rather than one the resume logic considers already done.
+          key: `${style.id}|${room.id}|${ROOM_QUERY_SUFFIX}`,
           tags: { styles: [style.id], rooms: [room.id], attributes: [] },
-          q: `${phrase} ${room.queries[0]}`,
+          q: `${phrase} ${room.queries[0]} ${ROOM_QUERY_SUFFIX}`,
         })
         n++
       }
