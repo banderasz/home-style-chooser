@@ -105,6 +105,15 @@ async function getJson(url, headers, attempt = 0) {
   readQuota(res.headers)
 
   if (res.status === 429) {
+    // Not every 429 is the hourly quota. Pexels also short-throttles bursts and says so
+    // with Retry-After (seconds) and no reset header — that one is worth sleeping off
+    // in place, otherwise a whole run stops for a three-second hiccup.
+    const retryAfter = Number(res.headers.get('retry-after'))
+    if (Number.isFinite(retryAfter) && retryAfter > 0 && retryAfter <= 120 && attempt < 5) {
+      await sleep(retryAfter * 1000 + 500)
+      return getJson(url, headers, attempt + 1)
+    }
+
     // Pexels' window is hourly. Short exponential backoff just burns minutes against
     // it, so either wait out the real window (--wait) or stop and resume later.
     const ms = untilReset()

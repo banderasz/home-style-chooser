@@ -1,5 +1,10 @@
 #!/usr/bin/env node
-// Prototype: can we tell "a full room is visible" from the pixels?
+// Can we tell "a full room is visible" from the pixels? Yes, partly — and
+// scripts/prune-catalog.mjs imports `roominessOf` / `roominessScore` from here to drop
+// the photos captions don't admit are close-ups.
+//
+// Run directly to re-validate the metrics against the weak caption labels, and to print
+// the operating-point table the pruner's threshold is chosen from:
 //
 //   node scripts/roominess.mjs [--limit 400]
 //
@@ -23,20 +28,10 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import jpeg from 'jpeg-js'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const args = process.argv.slice(2)
-const flagOf = (n, d) => {
-  const i = args.indexOf(`--${n}`)
-  return i === -1 ? d : args[i + 1]
-}
-const LIMIT = Number(flagOf('limit', 400))
-const CONCURRENCY = 12
-
 const W = 96 // analysis resolution; enough for structure, cheap to compute
 
-/** Decode, convert to grayscale, and downscale by box-sampling to W x H. */
-function grayscale(buffer) {
-  const { data, width, height } = jpeg.decode(buffer, { useTArray: true })
+/** Convert a decoded RGBA image to grayscale and downscale by box-sampling to W x H. */
+function grayscale({ data, width, height }) {
   const H = Math.max(1, Math.round((W * height) / width))
   const out = new Float64Array(W * H)
   const sx = width / W
@@ -152,98 +147,140 @@ function metrics({ gray, w, h }) {
   }
 }
 
-async function measure(image) {
-  try {
-    const res = await fetch(image.thumbnail, {
-      headers: { 'User-Agent': 'HomeStyleChooser/0.1' },
-      signal: AbortSignal.timeout(20000),
-    })
-    if (!res.ok) return null
-    const type = res.headers.get('content-type') ?? ''
-    if (!type.includes('jpeg') && !type.includes('jpg')) return null
-    return metrics(grayscale(Buffer.from(await res.arrayBuffer())))
-  } catch {
-    return null
-  }
+/**
+ * Structure metrics for one decoded image, as returned by `jpeg.decode(buf, {useTArray:
+ * true})`. Callers pass the decoded form so a pipeline measuring several things from the
+ * same photo — prune-catalog.mjs also wants saturation — decodes it only once.
+ */
+export function roominessOf(decoded) {
+  return metrics(grayscale(decoded))
 }
 
-// Weak labels from the captions, used only to check whether the metrics separate.
-const CLOSEUP =
-  /\b(close[- ]?up|detail of|macro|a mug|coffee cup|vase|bouquet|texture of|still life|faucet|towel|pillow arrangement|book|candle|plant in a pot)\b/i
-const FULLROOM =
-  /\b(spacious|open plan|open-plan|interior of|view of the|living room with|bedroom with|kitchen with|featuring a sofa|furnished|room featuring)\b/i
+// centreBias and longLines showed no separation (d=0.13 and d=-0.04 over 400 weakly
+// labelled photos), so the score uses only the two that did: room photos are busy
+// everywhere and have little flat area.
+export const roominessScore = (m) => m.edgeDensity / 100 - m.flatFraction
 
-const catalog = JSON.parse(await readFile(resolve(ROOT, 'src/data/catalog.json'), 'utf8'))
-const labelled = catalog.images
-  .map((i) => ({
-    image: i,
-    label: CLOSEUP.test(i.title) ? 'closeup' : FULLROOM.test(i.title) ? 'fullroom' : null,
-  }))
-  .filter((x) => x.label)
-  .slice(0, LIMIT)
+// Operating point for the pruner, read off the table this script prints:
+//
+//   keep full     drop close-up   threshold
+//   99          %             8%      -0.195
+//   97          %            24%       0.051     <- ROOMINESS_CUT
+//   95          %            32%       0.164
+//   90          %            40%       0.320
+//
+// AUC is 0.734 — useful, not decisive — so this is deliberately set where it keeps 97%
+// of genuine room photos. It removes a quarter of the close-ups captions missed and
+// costs ~3% of good cards. Raising it trades more good photos for each extra close-up.
+export const ROOMINESS_CUT = 0.051
 
-console.log(
-  `measuring ${labelled.length} weakly-labelled photos ` +
-    `(${labelled.filter((l) => l.label === 'fullroom').length} full-room, ` +
-    `${labelled.filter((l) => l.label === 'closeup').length} close-up)\n`,
-)
+// ---------------------------------------------------------------------------
+// Validation CLI. Everything below runs only when this file is the entry point, so
+// prune-catalog.mjs can import the scoring above without re-measuring the catalog.
+// ---------------------------------------------------------------------------
 
-const results = []
-const queue = [...labelled]
-await Promise.all(
-  Array.from({ length: CONCURRENCY }, async () => {
-    for (;;) {
-      const item = queue.shift()
-      if (!item) return
-      const m = await measure(item.image)
-      if (m) results.push({ ...item, ...m })
+if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
+  const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  const args = process.argv.slice(2)
+  const flagOf = (n, d) => {
+    const i = args.indexOf(`--${n}`)
+    return i === -1 ? d : args[i + 1]
+  }
+  const LIMIT = Number(flagOf('limit', 400))
+  const CONCURRENCY = 12
+
+  async function measure(image) {
+    try {
+      const res = await fetch(image.thumbnail, {
+        headers: { 'User-Agent': 'HomeStyleChooser/0.1' },
+        signal: AbortSignal.timeout(20000),
+      })
+      if (!res.ok) return null
+      const type = res.headers.get('content-type') ?? ''
+      if (!type.includes('jpeg') && !type.includes('jpg')) return null
+      const buf = Buffer.from(await res.arrayBuffer())
+      return roominessOf(jpeg.decode(buf, { useTArray: true }))
+    } catch {
+      return null
     }
-  }),
-)
-
-const mean = (rows, key) => rows.reduce((a, r) => a + r[key], 0) / (rows.length || 1)
-const full = results.filter((r) => r.label === 'fullroom')
-const close = results.filter((r) => r.label === 'closeup')
-
-console.log(`${'metric'.padEnd(14)} ${'full-room'.padStart(10)} ${'close-up'.padStart(10)}  separation`)
-for (const key of ['edgeDensity', 'flatFraction', 'centreBias', 'longLines']) {
-  const a = mean(full, key)
-  const b = mean(close, key)
-  // Standardised mean difference: how many pooled SDs apart the two groups are.
-  const sd = (rows) => {
-    const m = mean(rows, key)
-    return Math.sqrt(rows.reduce((s, r) => s + (r[key] - m) ** 2, 0) / (rows.length || 1))
   }
-  const pooled = Math.sqrt((sd(full) ** 2 + sd(close) ** 2) / 2) || 1
-  const d = (a - b) / pooled
+
+  // Weak labels from the captions, used only to check whether the metrics separate.
+  const CLOSEUP =
+    /\b(close[- ]?up|detail of|macro|a mug|coffee cup|vase|bouquet|texture of|still life|faucet|towel|pillow arrangement|book|candle|plant in a pot)\b/i
+  const FULLROOM =
+    /\b(spacious|open plan|open-plan|interior of|view of the|living room with|bedroom with|kitchen with|featuring a sofa|furnished|room featuring)\b/i
+
+  const catalog = JSON.parse(await readFile(resolve(ROOT, 'src/data/catalog.json'), 'utf8'))
+  const labelled = catalog.images
+    .map((i) => ({
+      image: i,
+      label: CLOSEUP.test(i.title) ? 'closeup' : FULLROOM.test(i.title) ? 'fullroom' : null,
+    }))
+    .filter((x) => x.label)
+    .slice(0, LIMIT)
+
   console.log(
-    `${key.padEnd(14)} ${a.toFixed(2).padStart(10)} ${b.toFixed(2).padStart(10)}  d=${d.toFixed(2)}`,
+    `measuring ${labelled.length} weakly-labelled photos ` +
+      `(${labelled.filter((l) => l.label === 'fullroom').length} full-room, ` +
+      `${labelled.filter((l) => l.label === 'closeup').length} close-up)\n`,
   )
-}
 
-// centreBias and longLines showed no separation (d=0.23 and d=0.04), so the score uses
-// only the two that did. Room photos are busy and have little flat area.
-const score = (r) => r.edgeDensity / 100 - r.flatFraction
-for (const r of results) r.score = score(r)
-
-// Plain accuracy is meaningless here — the classes are ~14:1, so "always say full-room"
-// already scores 93%. What matters operationally: at a threshold that keeps almost all
-// genuine room photos, how many close-ups does it remove?
-console.log('\noperating points (threshold chosen to keep N% of full-room photos):')
-console.log(`${'keep full'.padEnd(12)} ${'drop close-up'.padStart(14)} ${'threshold'.padStart(11)}`)
-const fullScores = full.map((r) => r.score).sort((a, b) => a - b)
-for (const keep of [0.99, 0.97, 0.95, 0.9, 0.8]) {
-  const cut = fullScores[Math.floor((1 - keep) * fullScores.length)]
-  const dropped = close.filter((r) => r.score < cut).length
-  console.log(
-    `${(keep * 100).toFixed(0).padEnd(12)}% ${((dropped / close.length) * 100).toFixed(0).padStart(13)}% ${cut.toFixed(3).padStart(11)}`,
+  const results = []
+  const queue = [...labelled]
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      for (;;) {
+        const item = queue.shift()
+        if (!item) return
+        const m = await measure(item.image)
+        if (m) results.push({ ...item, ...m })
+      }
+    }),
   )
-}
 
-const auc = (() => {
-  // Probability a random full-room photo scores above a random close-up.
-  let wins = 0
-  for (const f of full) for (const c of close) wins += f.score > c.score ? 1 : f.score === c.score ? 0.5 : 0
-  return wins / (full.length * close.length)
-})()
-console.log(`\nAUC: ${auc.toFixed(3)}  (0.5 = useless, 1.0 = perfect)`)
+  const mean = (rows, key) => rows.reduce((a, r) => a + r[key], 0) / (rows.length || 1)
+  const full = results.filter((r) => r.label === 'fullroom')
+  const close = results.filter((r) => r.label === 'closeup')
+
+  console.log(`${'metric'.padEnd(14)} ${'full-room'.padStart(10)} ${'close-up'.padStart(10)}  separation`)
+  for (const key of ['edgeDensity', 'flatFraction', 'centreBias', 'longLines']) {
+    const a = mean(full, key)
+    const b = mean(close, key)
+    // Standardised mean difference: how many pooled SDs apart the two groups are.
+    const sd = (rows) => {
+      const m = mean(rows, key)
+      return Math.sqrt(rows.reduce((s, r) => s + (r[key] - m) ** 2, 0) / (rows.length || 1))
+    }
+    const pooled = Math.sqrt((sd(full) ** 2 + sd(close) ** 2) / 2) || 1
+    const d = (a - b) / pooled
+    console.log(
+      `${key.padEnd(14)} ${a.toFixed(2).padStart(10)} ${b.toFixed(2).padStart(10)}  d=${d.toFixed(2)}`,
+    )
+  }
+
+  for (const r of results) r.score = roominessScore(r)
+
+  // Plain accuracy is meaningless here — the classes are ~14:1, so "always say full-room"
+  // already scores 93%. What matters operationally: at a threshold that keeps almost all
+  // genuine room photos, how many close-ups does it remove?
+  console.log('\noperating points (threshold chosen to keep N% of full-room photos):')
+  console.log(`${'keep full'.padEnd(12)} ${'drop close-up'.padStart(14)} ${'threshold'.padStart(11)}`)
+  const fullScores = full.map((r) => r.score).sort((a, b) => a - b)
+  for (const keep of [0.99, 0.97, 0.95, 0.9, 0.8]) {
+    const cut = fullScores[Math.floor((1 - keep) * fullScores.length)]
+    const dropped = close.filter((r) => r.score < cut).length
+    console.log(
+      `${(keep * 100).toFixed(0).padEnd(12)}% ${((dropped / close.length) * 100).toFixed(0).padStart(13)}% ${cut.toFixed(3).padStart(11)}`,
+    )
+  }
+
+  const auc = (() => {
+    // Probability a random full-room photo scores above a random close-up.
+    let wins = 0
+    for (const f of full) for (const c of close) wins += f.score > c.score ? 1 : f.score === c.score ? 0.5 : 0
+    return wins / (full.length * close.length)
+  })()
+  console.log(`\nAUC: ${auc.toFixed(3)}  (0.5 = useless, 1.0 = perfect)`)
+  console.log(`prune-catalog.mjs currently cuts below ROOMINESS_CUT = ${ROOMINESS_CUT}`)
+}

@@ -146,7 +146,7 @@ point where round 2 runs out of fresh cards for that style.
 
 Three mechanisms, in order of how much judgement they need:
 
-**`npm run prune`** — automatic. Two rules:
+**`npm run prune`** — automatic. Three rules:
 
 - *Greyscale.* A black-and-white photo says nothing about a room's palette, so every
   colour adjective it carries is noise. Detected from the pixels (mean HSV saturation of
@@ -161,9 +161,33 @@ Three mechanisms, in order of how much judgement they need:
   outright. The reject lists are deliberately narrow — `lady` (lady palm), `model` (model
   home), `hands` (hand-crafted) and `family` (family room) all produced false positives
   on real interiors and were removed.
+- *Close-ups the caption doesn't admit to.* Most bad photos aren't labelled "close-up
+  of" — they're `Illuminated lamp on nightstand`, `Elegant ceramic vase with dried
+  flowers`. So this one reads the pixels. `scripts/roominess.mjs` scores structure:
+  `edgeDensity / 100 - flatFraction`. A room is busy everywhere and has little flat area;
+  a close-up is mostly one smooth surface with its subject centre-frame. Two other
+  candidate metrics, `centreBias` and `longLines`, showed no separation (d=0.13 and
+  d=-0.04) and are measured but unused.
+
+  Run `node scripts/roominess.mjs` to re-derive the threshold. It validates against weak
+  caption labels and prints operating points:
+
+  ```
+  keep full     drop close-up   threshold
+  99          %             8%      -0.195
+  97          %            24%       0.051   <- ROOMINESS_CUT
+  95          %            32%       0.164
+  ```
+
+  AUC is 0.734 — useful, not decisive — so the shipped cut is the conservative one:
+  keeps 97% of genuine room photos, removes a quarter of the close-ups captions missed.
+  Override with `--min-roominess 0.164`, or skip the rule with `--keep-closeups`. Photos
+  whose thumbnail wouldn't decode are **kept** — no measurement is no evidence.
 
 Run it dry first; it prints counts and examples and changes nothing until `--apply`.
-Saturation is cached in the catalog, so re-runs after the first are instant.
+Saturation and roominess are cached in the catalog (one decode per photo produces both),
+so re-runs after the first are instant. First pass over the existing catalog dropped 106
+of 2135 photos (5.0%).
 
 **The Ignore button** — manual, in the app. Drops a photo you're looking at without
 recording a preference (a skip must never become evidence — you're judging the photo, not
@@ -173,6 +197,15 @@ At 3 votes the photo is retired for **everyone**: the file is imported by the ap
 drops out of every build and every device. There's no backend — the dev server is the
 only writer, and in a production build votes fall back to localStorage. `npm run prune`
 then deletes retired photos from the catalog for good.
+
+**Votes live on the server, not in the repo.** `src/data/ignored.json` is only the seed
+copy baked into the image; the file the deployment actually writes is in the mounted
+volume. Pull it back before pruning, or `npm run prune` acts on a stale vote list:
+
+```bash
+scp andras@homeserver:~/home-style-chooser/data/ignored.json src/data/ignored.json
+npm run prune          # dry run, now with the real votes
+```
 
 **Vision tagging** — not built. The caption lexicon and these heuristics can't tell a
 styled room from a cluttered one, or catch a mistagged style. A vision pass over the
@@ -206,6 +239,13 @@ file can't be written and the container restart-loops. Fix it once:
 docker run --rm -v "$PWD/data:/d" alpine chown -R 1000:1000 /d
 ```
 
+The catalog is bundled at build time, so a prune or a harvest only reaches the live site
+after a rebuild:
+
+```bash
+ssh andras@homeserver 'cd ~/home-style-chooser && git pull && docker compose up -d --build'
+```
+
 `server.mjs` serves the built bundle and keeps `/__ignore` alive in production. Without
 it a static deploy would silently downgrade the Ignore button to a per-browser
 localStorage list — the "retire a photo for everyone" behaviour needs somewhere to write.
@@ -221,6 +261,8 @@ scripts/
   attributes.mjs      the 45-adjective lexicon: caption patterns + search phrasings
   harvest.mjs         multi-provider, resumable catalog builder
   tag-attributes.mjs  derives the adjective axis from photo captions
+  prune-catalog.mjs   drops photos that are bad as quiz cards
+  roominess.mjs       whole-room-vs-close-up score, and its validation CLI
   verify-catalog.mjs  drops dead image URLs
   test-engine.mjs     engine tests (transpiles the TS and runs assertions)
 src/

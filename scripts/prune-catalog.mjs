@@ -8,21 +8,28 @@
 //      shots, building exteriors, commercial interiors.
 //   3. Captions that never mention a room at all — Flickr noise like "Gauze" or
 //      "N1_02146", and product/texture shots from the adjective queries.
-//   4. Photos flagged with the app's Ignore button enough times to hit the threshold in
+//   4. Close-ups the caption doesn't admit to, caught from the pixels by the roominess
+//      score in scripts/roominess.mjs. Most bad photos are mislabelled rather than
+//      labelled "close-up of", so the caption rules above can't see them.
+//   5. Photos flagged with the app's Ignore button enough times to hit the threshold in
 //      src/data/ignored.json. Those already drop out of the deck at runtime; this makes
 //      the removal permanent and shrinks the bundle.
 //
 //   node scripts/prune-catalog.mjs                 # dry run: report only
 //   node scripts/prune-catalog.mjs --apply         # actually remove them
-//   node scripts/prune-catalog.mjs --report        # saturation histogram, for tuning
+//   node scripts/prune-catalog.mjs --report        # saturation + roominess histograms
 //   node scripts/prune-catalog.mjs --limit 150     # sample, for a quick look
+//   node scripts/prune-catalog.mjs --min-roominess 0.164   # stricter close-up cut
+//   node scripts/prune-catalog.mjs --keep-closeups         # skip the roominess cut
 //
-// Saturation is cached in the catalog as `saturation`, so re-runs are instant.
+// Both measurements are cached in the catalog as `saturation` and `roominess`, so
+// re-runs are instant.
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import jpeg from 'jpeg-js'
+import { roominessOf, roominessScore, ROOMINESS_CUT } from './roominess.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -35,6 +42,10 @@ const APPLY = args.includes('--apply')
 const REPORT = args.includes('--report')
 const LIMIT = Number(flag('limit', 0))
 const CONCURRENCY = 12
+// Where to cut the roominess score. The default operating point and the table it was
+// read from live in scripts/roominess.mjs; re-run that script to re-derive them.
+const MIN_ROOMINESS = Number(flag('min-roominess', ROOMINESS_CUT))
+const KEEP_CLOSEUPS = args.includes('--keep-closeups')
 
 // Tuned against the histogram --report prints; see README.
 // A black-and-white *filter* drives saturation to essentially zero. An all-white or
@@ -71,8 +82,7 @@ function captionReject(title) {
 }
 
 /** Mean HSV saturation and the fraction of meaningfully coloured pixels. */
-function saturationOf(buffer) {
-  const { data, width, height } = jpeg.decode(buffer, { useTArray: true })
+function saturationOf({ data, width, height }) {
   // Sample a grid rather than every pixel — a thumbnail is already plenty of signal.
   const step = Math.max(1, Math.floor((width * height) / 4000))
   let total = 0
@@ -97,7 +107,7 @@ function saturationOf(buffer) {
 }
 
 async function measure(image) {
-  if (typeof image.saturation === 'number') return image
+  if (typeof image.saturation === 'number' && typeof image.roominess === 'number') return image
   try {
     const res = await fetch(image.thumbnail, {
       headers: { 'User-Agent': 'HomeStyleChooser/0.1' },
@@ -106,11 +116,15 @@ async function measure(image) {
     if (!res.ok) return image
     const type = res.headers.get('content-type') ?? ''
     if (!type.includes('jpeg') && !type.includes('jpg')) return image // only JPEG is decodable here
-    const stats = saturationOf(Buffer.from(await res.arrayBuffer()))
+    // One decode feeds both measurements — colour for the greyscale cut, structure for
+    // the close-up cut.
+    const decoded = jpeg.decode(Buffer.from(await res.arrayBuffer()), { useTArray: true })
+    const stats = saturationOf(decoded)
     if (stats) {
       image.saturation = Math.round(stats.mean * 1000) / 1000
       image.colourful = Math.round(stats.colourful * 1000) / 1000
     }
+    image.roominess = Math.round(roominessScore(roominessOf(decoded)) * 1000) / 1000
   } catch {
     // Unreachable or undecodable: leave it unmeasured rather than guessing.
   }
@@ -152,6 +166,7 @@ await Promise.all(
 )
 
 const measured = images.filter((i) => typeof i.saturation === 'number')
+const scored = images.filter((i) => typeof i.roominess === 'number')
 
 if (REPORT) {
   const buckets = new Map()
@@ -167,6 +182,20 @@ if (REPORT) {
   for (const i of [...measured].sort((a, b) => a.saturation - b.saturation).slice(0, 12)) {
     console.log(`  sat=${i.saturation} col=${i.colourful}  ${i.title.slice(0, 62)}`)
   }
+
+  const rBuckets = new Map()
+  for (const i of scored) {
+    const b = (Math.floor(i.roominess * 10) / 10).toFixed(1)
+    rBuckets.set(b, (rBuckets.get(b) ?? 0) + 1)
+  }
+  console.log(`\nroominess histogram (${scored.length} scored, cut at ${MIN_ROOMINESS}):`)
+  for (const [b, c] of [...rBuckets].sort((a, b) => Number(a[0]) - Number(b[0]))) {
+    console.log(`  ${b.padStart(5)}  ${'#'.repeat(Math.ceil(c / 4))} ${c}`)
+  }
+  console.log('\nleast roomy photos:')
+  for (const i of [...scored].sort((a, b) => a.roominess - b.roominess).slice(0, 12)) {
+    console.log(`  room=${String(i.roominess).padStart(6)}  ${i.title.slice(0, 62)}`)
+  }
 }
 
 const grey = measured.filter((i) => i.saturation < GREY_MEAN && i.colourful < GREY_COLOURFUL)
@@ -176,15 +205,28 @@ for (const i of images) {
   if (reason) captionBad.set(i.id, reason)
 }
 
+// Unscored photos are kept: a thumbnail that wouldn't decode is no evidence either way.
+const closeups = KEEP_CLOSEUPS ? [] : scored.filter((i) => i.roominess < MIN_ROOMINESS)
+
 const greyIds = new Set(grey.map((i) => i.id))
 const votedOut = images.filter((i) => retiredByVote.has(i.id))
-const dropIds = new Set([...greyIds, ...captionBad.keys(), ...votedOut.map((i) => i.id)])
+const dropIds = new Set([
+  ...greyIds,
+  ...captionBad.keys(),
+  ...closeups.map((i) => i.id),
+  ...votedOut.map((i) => i.id),
+])
 
-console.log(`\n${images.length} photos · ${measured.length} measured`)
+console.log(`\n${images.length} photos · ${measured.length} measured · ${scored.length} scored`)
 console.log(`  greyscale/filtered: ${grey.length}`)
 const byReason = new Map()
 for (const r of captionBad.values()) byReason.set(r, (byReason.get(r) ?? 0) + 1)
 for (const [r, c] of byReason) console.log(`  caption "${r}": ${c}`)
+console.log(
+  KEEP_CLOSEUPS
+    ? '  close-up (roominess): skipped (--keep-closeups)'
+    : `  close-up (roominess < ${MIN_ROOMINESS}): ${closeups.length}`,
+)
 console.log(`  flagged via Ignore button: ${votedOut.length}`)
 console.log(`  total to drop: ${dropIds.size} (${((dropIds.size / images.length) * 100).toFixed(1)}%)`)
 
@@ -193,6 +235,9 @@ for (const i of grey.slice(0, 5)) console.log(`  [grey ${i.saturation}] ${i.titl
 for (const [id, reason] of [...captionBad].slice(0, 8)) {
   const i = images.find((x) => x.id === id)
   console.log(`  [${reason}] ${i.title.slice(0, 64)}`)
+}
+for (const i of [...closeups].sort((a, b) => a.roominess - b.roominess).slice(0, 8)) {
+  console.log(`  [close-up ${i.roominess}] ${i.title.slice(0, 64)}`)
 }
 
 if (APPLY) {
