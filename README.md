@@ -185,6 +185,34 @@ for arbitrary content, and scraping it breaks their terms of service. The provid
 are the closest legitimate substitutes. `ImageProvider` in `src/data/images.ts` is the
 seam to implement if you ever get proper access to another source.
 
+## Deploying
+
+Runs as a container behind a Cloudflare Tunnel:
+
+```bash
+git clone https://github.com/banderasz/home-style-chooser.git
+cd home-style-chooser
+docker compose up -d --build
+
+# the app is on :8071; expose it through the tunnel
+cd ~/cloudflared && ./publish_service.py homestyle --port 8071
+```
+
+`docker compose` first-run gotcha: the container runs as the unprivileged `node` user
+(uid 1000), but Docker creates the bind-mounted `data/` directory as root, so the vote
+file can't be written and the container restart-loops. Fix it once:
+
+```bash
+docker run --rm -v "$PWD/data:/d" alpine chown -R 1000:1000 /d
+```
+
+`server.mjs` serves the built bundle and keeps `/__ignore` alive in production. Without
+it a static deploy would silently downgrade the Ignore button to a per-browser
+localStorage list — the "retire a photo for everyone" behaviour needs somewhere to write.
+Votes live in the mounted `data/` volume, seeded on first boot from the copy in the image,
+so they survive rebuilds. The app reads the live file at startup rather than only the
+build-time copy, so a retired photo disappears without a redeploy.
+
 ## Layout
 
 ```
@@ -201,6 +229,8 @@ src/
   engine/quiz.ts      deck building, phase transitions, scoring — all pure functions
   components/         Intro, Deck, SwipeCard, Results
   App.tsx             screen state and localStorage session persistence
+server.mjs            production static server + the /__ignore vote endpoint
+Dockerfile            two-stage build; runtime has no npm dependencies
 ```
 
 The engine is pure and UI-free: the React layer holds a `QuizState`, calls `answer()`, and
