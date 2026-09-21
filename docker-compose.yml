@@ -1,0 +1,14 @@
+# Home Style Chooser — published at homestyle.banderasz.cc via
+#   cd ~/cloudflared && ./publish_service.py homestyle --port 8071
+services:
+  homestyle:
+    build: .
+    image: home-style-chooser
+    container_name: home-style-chooser
+    restart: unless-stopped
+    ports:
+      - "8071:8071"
+    volumes:
+      # "Wrong image" votes live here so they survive a rebuild; the image only
+      # carries a seed copy.
+      - ./data:/app/data
