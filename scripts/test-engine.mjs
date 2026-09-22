@@ -22,17 +22,22 @@ async function loadEngine() {
   const sources = {
     'taxonomy.mjs': 'src/data/taxonomy.ts',
     'quiz.mjs': 'src/engine/quiz.ts',
+    'infinite.mjs': 'src/engine/infinite.ts',
   }
   for (const [out, src] of Object.entries(sources)) {
     const code = await readFile(join(ROOT, src), 'utf8')
     const js = ts.transpileModule(code, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     }).outputText
-    // Flatten the import path: both files sit side by side in the temp dir.
-    await writeFile(join(dir, out), js.replace("'../data/taxonomy'", "'./taxonomy.mjs'"))
+    // Flatten the import paths: all files sit side by side in the temp dir.
+    await writeFile(
+      join(dir, out),
+      js.replace("'../data/taxonomy'", "'./taxonomy.mjs'").replace("'./quiz'", "'./quiz.mjs'"),
+    )
   }
   const mod = await import(pathToFileURL(join(dir, 'quiz.mjs')).href)
-  return { mod, cleanup: () => rm(dir, { recursive: true, force: true }) }
+  const infinite = await import(pathToFileURL(join(dir, 'infinite.mjs')).href)
+  return { mod, infinite, cleanup: () => rm(dir, { recursive: true, force: true }) }
 }
 
 function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
@@ -62,7 +67,7 @@ function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
 const tests = []
 const test = (name, fn) => tests.push([name, fn])
 
-const { mod: E, cleanup } = await loadEngine()
+const { mod: E, infinite: I, cleanup } = await loadEngine()
 const { STYLES } = await import(
   pathToFileURL(join(ROOT, 'scripts', 'taxonomy.mjs')).href
 )
@@ -467,6 +472,159 @@ test('phase 1 covers far more adjectives than it has cards', async () => {
     )
   }
   console.log(`      (worst-case coverage: ${worst} attributes)`)
+})
+
+// ---------------------------------------------------------------------------
+// Endless mode
+// ---------------------------------------------------------------------------
+
+/** Swipes `n` cards, liking anything tagged with a style in `loved`. */
+function swipe(state, n, loved) {
+  for (let i = 0; i < n; i++) {
+    const img = I.currentImage(state)
+    if (!img) break
+    state = I.judge(state, img.styles.some((s) => loved.includes(s)) ? 'like' : 'dislike')
+  }
+  return state
+}
+
+test('endless mode never serves the same photo twice', () => {
+  let state = I.createInfinite(POOL, 7)
+  const seen = []
+  for (let i = 0; i < 120; i++) {
+    const img = I.currentImage(state)
+    if (!img) break
+    seen.push(img.id)
+    state = I.judge(state, 'like')
+  }
+  assert.equal(seen.length, 120)
+  assert.equal(new Set(seen).size, 120, 'a photo came round twice')
+})
+
+test('judging the same photo again replaces rather than duplicates', () => {
+  let state = I.createInfinite(POOL, 7)
+  const id = I.currentImage(state).id
+  state = I.judge(state, 'like')
+  state = I.setVerdict(state, id, 'dislike')
+  assert.equal(state.answers.filter((a) => a.imageId === id).length, 1)
+  assert.equal(state.answers.find((a) => a.imageId === id).verdict, 'dislike')
+})
+
+test('changing a verdict keeps its place in the history', () => {
+  let state = I.createInfinite(POOL, 7)
+  const first = I.currentImage(state).id
+  state = swipe(state, 4, [])
+  state = I.setVerdict(state, first, 'like')
+  assert.equal(state.answers[0].imageId, first, 'the edited card jumped position')
+})
+
+test('clearing a verdict drops it from the evidence', () => {
+  let state = I.createInfinite(POOL, 7)
+  const id = I.currentImage(state).id
+  const style = I.currentImage(state).styles[0]
+  state = I.judge(state, 'like')
+
+  const before = E.scoreStyles(state).find((s) => s.styleId === style).seen
+  const cleared = I.setVerdict(state, id, null)
+  const after = E.scoreStyles(cleared).find((s) => s.styleId === style).seen
+
+  assert.ok(before > 0)
+  assert.ok(after < before, 'clearing left the evidence behind')
+  assert.equal(cleared.answers.length, 0)
+})
+
+test('a cleared photo comes back round', () => {
+  let state = I.createInfinite(POOL, 7)
+  const id = I.currentImage(state).id
+  state = swipe(state, 5, [])
+  assert.ok(!state.queue.slice(state.cursor).includes(id) || state.cursor === 0)
+
+  state = I.setVerdict(state, id, null)
+  assert.equal(I.currentImage(state).id, id, 'the cleared photo was not re-served')
+})
+
+test('ignored photos are never scored and never return', () => {
+  let state = I.createInfinite(POOL, 7)
+  const id = I.currentImage(state).id
+  state = I.skipCurrent(state)
+  assert.deepEqual(state.skipped, [id])
+  assert.equal(state.answers.length, 0)
+  state = swipe(state, 30, [])
+  assert.ok(!state.answers.some((a) => a.imageId === id))
+})
+
+test('undo steps back to the photo it un-judged', () => {
+  let state = I.createInfinite(POOL, 7)
+  state = swipe(state, 6, [])
+  const last = state.answers[state.answers.length - 1].imageId
+  state = I.undo(state)
+  assert.equal(state.answers.length, 5)
+  assert.equal(I.currentImage(state).id, last)
+})
+
+test('endless mode and the quiz score an identical answer list identically', () => {
+  let state = I.createInfinite(POOL, 7)
+  state = swipe(state, 40, [STYLE_IDS[0], STYLE_IDS[1]])
+
+  // The same verdicts fed through a quiz-shaped state.
+  const asQuiz = { config: E.DEFAULT_CONFIG, pool: POOL, answers: state.answers }
+  assert.deepEqual(E.scoreStyles(asQuiz), E.scoreStyles(state))
+  assert.deepEqual(E.scoreAttributes(asQuiz), E.scoreAttributes(state))
+})
+
+test('the ranking tracks what was actually liked', () => {
+  const loved = [STYLE_IDS[3]]
+  let state = I.createInfinite(POOL, 11)
+  state = swipe(state, 80, loved)
+  const top = E.scoreStyles(state).filter((s) => s.seen > 0)[0]
+  assert.equal(top.styleId, loved[0], `expected ${loved[0]}, got ${top.styleId}`)
+})
+
+test('stats add up', () => {
+  let state = I.createInfinite(POOL, 7)
+  state = swipe(state, 10, [STYLE_IDS[0]])
+  state = I.skipCurrent(state)
+  const s = I.stats(state)
+  assert.equal(s.judged, 10)
+  assert.equal(s.skipped, 1)
+  assert.equal(s.remaining, POOL.length - 11)
+  assert.equal(s.liked + (s.judged - s.liked), 10)
+})
+
+test('a saved session round-trips, dropping only photos the pool lost', () => {
+  let state = I.createInfinite(POOL, 7)
+  state = swipe(state, 12, [STYLE_IDS[0]])
+  const saved = I.toSaved(state)
+
+  const same = I.fromSaved(POOL, saved)
+  assert.deepEqual(same.answers, state.answers)
+  assert.equal(same.cursor, state.cursor)
+
+  // Retire one judged photo, as an ignore vote would.
+  const gone = state.answers[0].imageId
+  const smaller = POOL.filter((i) => i.id !== gone)
+  const restored = I.fromSaved(smaller, saved)
+  assert.equal(restored.answers.length, 11, 'lost more than the retired photo')
+  assert.ok(!restored.answers.some((a) => a.imageId === gone))
+})
+
+test('a corrupt saved session degrades instead of throwing', () => {
+  const restored = I.fromSaved(POOL, {
+    seed: 3,
+    skipped: ['nope'],
+    answers: [
+      { i: 'not-in-pool', v: 'like' },
+      { i: POOL[0].id, v: 'sideways' },
+      { i: POOL[1].id, v: 'like' },
+      { i: POOL[1].id, v: 'dislike' },
+    ],
+  })
+  assert.deepEqual(
+    restored.answers,
+    [{ imageId: POOL[1].id, verdict: 'like', phase: 1 }],
+    'bad entries were not filtered',
+  )
+  assert.deepEqual(restored.skipped, [])
 })
 
 let failed = 0

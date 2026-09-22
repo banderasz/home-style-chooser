@@ -6,6 +6,9 @@ interface Props {
   round2Cards: number
   onStart: () => void
   onResume?: () => void
+  onInfinite: () => void
+  /** How many photos the endless deck already has verdicts for, if any. */
+  infiniteJudged: number
 }
 
 export default function Intro({
@@ -15,6 +18,8 @@ export default function Intro({
   round2Cards,
   onStart,
   onResume,
+  onInfinite,
+  infiniteJudged,
 }: Props) {
   return (
     <section className="intro">
@@ -60,10 +65,21 @@ export default function Intro({
             Resume where I left off
           </button>
         )}
+        <button type="button" className="btn btn--ghost btn--wide" onClick={onInfinite}>
+          {infiniteJudged > 0
+            ? `Endless mode — ${infiniteJudged} judged`
+            : 'Endless mode — judge the whole catalog'}
+        </button>
       </div>
 
       <p className="intro__note">
-        {imageCount} photos, CC-licensed via Openverse. Credits are on every card.
+        Endless mode has no rounds and no end: swipe as long as you like, the ranking updates
+        as you go, and you can change any verdict later. It saves on this device.
+      </p>
+
+      <p className="intro__note">
+        {imageCount} photos from Pexels and Openverse, all free to use. Credits are on every
+        card.
       </p>
     </section>
   )

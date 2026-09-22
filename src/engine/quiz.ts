@@ -63,7 +63,18 @@ export function phase1PerStyle(config: QuizConfig, styleCount = STYLES.length): 
   return Math.min(config.phase1MaxPerStyle, Math.max(config.phase1MinPerStyle, raw))
 }
 
-export interface QuizState {
+/**
+ * The part of a session the scoring functions actually read. Both `QuizState` and the
+ * endless deck's `InfiniteState` satisfy it structurally, so the two modes share one
+ * scoring implementation rather than forking it.
+ */
+export interface Scored {
+  pool: HomeImage[]
+  answers: Answer[]
+  config: QuizConfig
+}
+
+export interface QuizState extends Scored {
   config: QuizConfig
   /** Every image the quiz may draw from, keyed for cheap lookup. */
   pool: HomeImage[]
@@ -83,7 +94,7 @@ export interface QuizState {
 // Deterministic RNG — a reload must rebuild the exact same queue from the seed.
 // ---------------------------------------------------------------------------
 
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed >>> 0
   return () => {
     a = (a + 0x6d2b79f5) >>> 0
@@ -115,7 +126,7 @@ function weightedPick<T>(items: T[], weight: (item: T) => number, rand: () => nu
   return weights.length - 1
 }
 
-function shuffled<T>(items: T[], rand: () => number): T[] {
+export function shuffled<T>(items: T[], rand: () => number): T[] {
   const out = [...items]
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1))
@@ -303,10 +314,27 @@ const SPLIT: Record<Axis, (k: number) => number> = {
   attributes: (k) => 1 / Math.sqrt(k),
 }
 
-export function scoreTags(state: QuizState, axis: Axis, universe?: string[]): TagScore[] {
+/**
+ * id -> image, cached per pool array. The endless mode rescores on every swipe, and
+ * rebuilding a 3000-entry map four times a render (once per scorer) is the one place that
+ * actually shows up. The pool array is created once by the provider and never replaced,
+ * so keying on its identity is enough.
+ */
+const poolIndexes = new WeakMap<HomeImage[], Map<string, HomeImage>>()
+
+function indexOf(pool: HomeImage[]): Map<string, HomeImage> {
+  let index = poolIndexes.get(pool)
+  if (!index) {
+    index = new Map(pool.map((i) => [i.id, i]))
+    poolIndexes.set(pool, index)
+  }
+  return index
+}
+
+export function scoreTags(state: Scored, axis: Axis, universe?: string[]): TagScore[] {
   const seen = new Map<string, number>()
   const liked = new Map<string, number>()
-  const byId = new Map(state.pool.map((i) => [i.id, i]))
+  const byId = indexOf(state.pool)
 
   for (const answer of state.answers) {
     const img = byId.get(answer.imageId)
@@ -341,7 +369,7 @@ export function scoreTags(state: QuizState, axis: Axis, universe?: string[]): Ta
     .sort((a, b) => b.rank - a.rank)
 }
 
-export function scoreStyles(state: QuizState): StyleScore[] {
+export function scoreStyles(state: Scored): StyleScore[] {
   return scoreTags(
     state,
     'styles',
@@ -350,7 +378,7 @@ export function scoreStyles(state: QuizState): StyleScore[] {
 }
 
 /** Adjective scores, most-liked first. Only tags the quiz actually showed. */
-export function scoreAttributes(state: QuizState): TagScore[] {
+export function scoreAttributes(state: Scored): TagScore[] {
   return scoreTags(state, 'attributes').filter((t) => t.seen > 0)
 }
 
@@ -361,10 +389,10 @@ export interface RoomScore {
   rate: number
 }
 
-export function scoreRooms(state: QuizState): RoomScore[] {
+export function scoreRooms(state: Scored): RoomScore[] {
   const seen = new Map<string, number>()
   const liked = new Map<string, number>()
-  const byId = new Map(state.pool.map((i) => [i.id, i]))
+  const byId = indexOf(state.pool)
 
   for (const answer of state.answers) {
     const img = byId.get(answer.imageId)
@@ -551,8 +579,8 @@ function countPhase1(state: QuizState): number {
 }
 
 /** Images the user liked, most recent first — used for the results gallery. */
-export function likedImages(state: QuizState): HomeImage[] {
-  const byId = new Map(state.pool.map((i) => [i.id, i]))
+export function likedImages(state: Scored): HomeImage[] {
+  const byId = indexOf(state.pool)
   return state.answers
     .filter((a) => a.verdict === 'like')
     .map((a) => byId.get(a.imageId))

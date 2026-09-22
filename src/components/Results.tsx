@@ -4,7 +4,7 @@ import {
   scoreAttributes,
   scoreRooms,
   scoreStyles,
-  type QuizState,
+  type Scored,
 } from '../engine/quiz'
 import {
   ATTRIBUTE_BY_ID,
@@ -15,13 +15,23 @@ import {
 } from '../data/taxonomy'
 
 interface Props {
-  state: QuizState
+  /** Any session the scorer understands — the two-round quiz or the endless deck. */
+  state: Scored
   onRestart: () => void
+  /** Label for the primary action; the endless deck goes back to swiping, not to zero. */
+  restartLabel?: string
 }
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
 
-export default function Results({ state, onRestart }: Props) {
+/**
+ * The gallery renders one thumbnail per liked photo. Fine for a 47-card quiz; in endless
+ * mode that reaches four figures, so show the most recent and point at the history screen
+ * for the rest.
+ */
+const GALLERY_LIMIT = 60
+
+export default function Results({ state, onRestart, restartLabel = 'Start over' }: Props) {
   const styles = useMemo(() => scoreStyles(state), [state])
   const rooms = useMemo(() => scoreRooms(state), [state])
   const liked = useMemo(() => likedImages(state), [state])
@@ -195,8 +205,11 @@ export default function Results({ state, onRestart }: Props) {
       {liked.length > 0 && (
         <>
           <h2 className="section-title">Everything you loved ({liked.length})</h2>
+          {liked.length > GALLERY_LIMIT && (
+            <p className="aside aside--muted">Showing the {GALLERY_LIMIT} most recent.</p>
+          )}
           <div className="gallery">
-            {liked.map((img) => (
+            {liked.slice(0, GALLERY_LIMIT).map((img) => (
               <a
                 key={img.id}
                 className="gallery__item"
@@ -219,7 +232,7 @@ export default function Results({ state, onRestart }: Props) {
 
       <div className="results__actions">
         <button type="button" className="btn btn--primary" onClick={onRestart}>
-          Start over
+          {restartLabel}
         </button>
         <button type="button" className="btn btn--ghost" onClick={copyToClipboard}>
           Copy results

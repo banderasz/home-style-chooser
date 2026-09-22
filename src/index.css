@@ -702,6 +702,100 @@ h1 {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
 }
 
+/* ---------- endless mode ---------- */
+
+/* A third chip colour, so the endless deck never reads as "round 1". */
+.phase-chip--endless {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+/* The live read, updated on every swipe. Two lines at most, so it can't push the card
+   down as the style names change length. */
+.deck-header__leader {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 2.8em;
+}
+
+.deck-header__muted {
+  color: var(--text-dim);
+}
+
+.deck-screen--done {
+  justify-content: center;
+}
+
+/* Editable history grid: same tiles as the results gallery, but they're buttons. */
+.history__head {
+  margin-bottom: 18px;
+}
+
+.history__lead {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.history__filters {
+  margin-bottom: 16px;
+}
+
+.chip--button {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.chip--on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.gallery--editable .gallery__item {
+  cursor: pointer;
+  padding: 0;
+  border: 2px solid transparent;
+  /* The border is inside the tile, so a verdict change doesn't reflow the grid. */
+  box-sizing: border-box;
+}
+
+.gallery__item--like {
+  border-color: var(--like);
+}
+
+.gallery__item--dislike {
+  border-color: var(--nope);
+}
+
+/* A disliked photo is still worth seeing — dimmed, not hidden. */
+.gallery__item--dislike img {
+  opacity: 0.45;
+}
+
+.gallery__verdict {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.gallery__item--like .gallery__verdict {
+  color: var(--like);
+}
+
+.gallery__item--dislike .gallery__verdict {
+  color: var(--nope);
+}
+
 .results__actions {
   display: flex;
   gap: 10px;

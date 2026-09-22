@@ -269,21 +269,51 @@ src/
   data/taxonomy.ts    the 23 styles, 45 attributes and 6 rooms, with display copy
   data/images.ts      ImageProvider interface + the curated catalog loader
   engine/quiz.ts      deck building, phase transitions, scoring — all pure functions
-  components/         Intro, Deck, SwipeCard, Results
+  engine/infinite.ts  the endless deck: queue policy + editable verdicts
+  components/         Intro, Deck, InfiniteDeck, History, SwipeCard, Results
   App.tsx             screen state and localStorage session persistence
 server.mjs            production static server + the /__ignore vote endpoint
 Dockerfile            two-stage build; runtime has no npm dependencies
 ```
 
 The engine is pure and UI-free: the React layer holds a `QuizState`, calls `answer()`, and
-renders what comes back. A session is persisted by saving the seed plus the list of
-verdicts and replaying them, so there's one source of truth for the deck.
+renders what comes back.
+
+A session is persisted by **snapshotting the deck**, not by replaying it. Replaying
+verdicts through a fresh `createQuiz` only works while the pool is identical, and ignoring
+a photo changes the pool — so a replay after an ignore would attach your answers to
+different images.
+
+## Endless mode
+
+The quiz is built for a stranger who wants an answer in three minutes. Endless mode is the
+other thing: swipe the whole catalog over as many sittings as you like, watch the ranking
+firm up as you go, and change your mind afterwards.
+
+- **No rounds, no end.** A seed-shuffled pass over all 2985 photos. Judged cards are
+  stepped over rather than removed, so the order is stable and un-judging a photo puts it
+  back where it was.
+- **Live result.** The header carries the current leading style and your like-rate,
+  recomputed on every swipe.
+- **Editable.** The History screen is a grid of everything you've judged. Tapping a photo
+  cycles liked → not for me → unjudged. Clearing a verdict removes it from the scoring
+  *and* returns the photo to the deck — "I shouldn't have judged this" is a different
+  statement from "I disliked it", and only one of them is evidence.
+- **Saved on this device**, under `home-style-chooser/infinite/v1`, after every swipe.
+  Unlike the quiz, a retired photo costs one verdict rather than the whole session: the
+  answers name their own images, so the rest restore fine.
+
+It reuses the quiz's scoring wholesale. Every scoring function reads only
+`{pool, answers, config}` — declared as `Scored` in `src/engine/quiz.ts` — so
+`InfiniteState` satisfies it structurally and there is one implementation, not two. The
+same `Results` screen renders both modes.
 
 ## Interaction
 
 Drag or flick a card, tap the ✕ / ♥ buttons, or use ← and → on a keyboard. Backspace
 undoes the last card within the current round; `x` ignores an unusable photo. After 10
-cards you can bail out early and still get a ranking.
+cards you can bail out early and still get a ranking. Endless mode takes the same inputs,
+except undo is unlimited — there are no rounds to keep stable.
 
 The **tags** toggle in the header overlays each photo's style, room and adjectives. It
 defaults to off, because seeing "Art Deco" before you swipe means partly rating the label

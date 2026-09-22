@@ -1,46 +1,57 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import SwipeCard from './SwipeCard'
-import {
-  currentImage,
-  progress,
-  upcomingImages,
-  type QuizState,
-  type Verdict,
-} from '../engine/quiz'
-import { styleLabel } from '../data/taxonomy'
 import { useShowTags } from './useShowTags'
+import { currentImage, stats, upcoming, type InfiniteState } from '../engine/infinite'
+import { scoreStyles, type Verdict } from '../engine/quiz'
+import { styleLabel } from '../data/taxonomy'
 
 interface Props {
-  state: QuizState
-  onAnswer: (verdict: Verdict) => void
+  state: InfiniteState
+  onJudge: (verdict: Verdict) => void
   onUndo: () => void
   onIgnore: () => void
-  onFinishEarly: () => void
+  onHistory: () => void
+  onResults: () => void
+  onExit: () => void
 }
 
-export default function Deck({ state, onAnswer, onUndo, onIgnore, onFinishEarly }: Props) {
+export default function InfiniteDeck({
+  state,
+  onJudge,
+  onUndo,
+  onIgnore,
+  onHistory,
+  onResults,
+  onExit,
+}: Props) {
   const [commanded, setCommanded] = useState<Verdict | null>(null)
   const [showTags, toggleTags] = useShowTags()
+
   const top = currentImage(state)
-  const next = useMemo(() => upcomingImages(state, 2), [state])
-  const p = progress(state)
+  const next = useMemo(() => upcoming(state, 2), [state])
+  const s = stats(state)
+
+  // The live read. Recomputed on every swipe, which is the point of the mode — the
+  // scoring index is cached per pool so this stays cheap (see quiz.ts `indexOf`).
+  const leader = useMemo(() => {
+    const seen = scoreStyles(state).filter((x) => x.seen > 0)
+    return seen[0] ?? null
+  }, [state])
 
   /**
-   * Clearing the command must happen in the same update as the answer, not in an effect
-   * keyed on the cursor. React runs child effects before parent effects, so an effect
-   * here would leave the *next* card — a reused instance promoted from the stack — to
-   * see the stale command, fly away on its own, and record an answer for a card the user
-   * never saw.
+   * Same protocol as Deck: clear the command in the *same* update as the answer, never in
+   * an effect. React runs child effects before parent effects, so an effect here would
+   * leave the next card — a reused instance promoted from the stack — to see the stale
+   * command and record an answer for a card nobody saw.
    */
   const handleDecide = useCallback(
     (verdict: Verdict) => {
       setCommanded(null)
-      onAnswer(verdict)
+      onJudge(verdict)
     },
-    [onAnswer],
+    [onJudge],
   )
 
-  // Warm the next two images so the stack never flashes empty.
   useEffect(() => {
     next.forEach((img) => {
       const pre = new Image()
@@ -59,18 +70,34 @@ export default function Deck({ state, onAnswer, onUndo, onIgnore, onFinishEarly 
     return () => window.removeEventListener('keydown', onKey)
   }, [onUndo, onIgnore])
 
-  if (!top) return null
-
-  const canUndo =
-    state.answers.length > 0 && state.answers[state.answers.length - 1].phase === state.phase
+  // The catalog is finite, so say so plainly rather than looping photos silently.
+  if (!top) {
+    return (
+      <section className="deck-screen deck-screen--done">
+        <div className="notice">
+          <h1>That's the whole catalog</h1>
+          <p>
+            {s.judged} photos judged, {s.skipped} skipped. Nothing left to show until the next
+            harvest.
+          </p>
+          <div className="results__actions">
+            <button type="button" className="btn btn--primary" onClick={onResults}>
+              See the result
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={onHistory}>
+              Review everything
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="deck-screen">
       <header className="deck-header">
         <div className="deck-header__row">
-          <span className={`phase-chip phase-chip--${p.phase}`}>
-            {p.phase === 1 ? 'Round 1 · finding your taste' : 'Round 2 · narrowing it down'}
-          </span>
+          <span className="phase-chip phase-chip--endless">Endless</span>
           <span className="deck-header__right">
             <button
               type="button"
@@ -82,19 +109,24 @@ export default function Deck({ state, onAnswer, onUndo, onIgnore, onFinishEarly 
               tags
             </button>
             <span className="deck-header__count">
-              {p.phaseAnswered + 1} / {p.phaseTotal}
+              {s.judged} judged · {s.remaining} left
             </span>
           </span>
         </div>
-        <div className="progress">
-          <div className="progress__bar" style={{ width: `${(p.answered / p.total) * 100}%` }} />
-        </div>
-        {p.phase === 2 && state.focus.length > 0 && (
-          <p className="deck-header__focus">
-            Digging into {state.focus.slice(0, 3).map(styleLabel).join(', ')}
-            {state.focus.length > 3 ? ' and one more' : ''}
-          </p>
-        )}
+        <p className="deck-header__leader">
+          {leader ? (
+            <>
+              Leading: <strong>{styleLabel(leader.styleId)}</strong>{' '}
+              <span className="deck-header__muted">
+                {Math.round(leader.rate * 100)}%
+                {leader.confidence < 0.5 ? ' · still thin' : ''} · you like{' '}
+                {Math.round(s.likeRate * 100)}% of what you see
+              </span>
+            </>
+          ) : (
+            <span className="deck-header__muted">Swipe a few and a leader will show up here.</span>
+          )}
+        </p>
       </header>
 
       <div className="stack">
@@ -134,7 +166,7 @@ export default function Deck({ state, onAnswer, onUndo, onIgnore, onFinishEarly 
             type="button"
             className="btn btn--ghost btn--small"
             onClick={onUndo}
-            disabled={!canUndo}
+            disabled={s.judged === 0}
           >
             Undo
           </button>
@@ -158,16 +190,18 @@ export default function Deck({ state, onAnswer, onUndo, onIgnore, onFinishEarly 
       </div>
 
       <p className="deck-footer">
-        Swipe, tap, or use ← →. <strong>Ignore</strong> (x) drops a bad photo without
-        counting it.
-        {state.answers.length >= 10 && (
-          <>
-            {' '}
-            <button type="button" className="linkish" onClick={onFinishEarly}>
-              Show my results now
-            </button>
-          </>
-        )}
+        Saved as you go — close the tab and come back whenever.{' '}
+        <button type="button" className="linkish" onClick={onHistory}>
+          History
+        </button>{' '}
+        ·{' '}
+        <button type="button" className="linkish" onClick={onResults}>
+          Full result
+        </button>{' '}
+        ·{' '}
+        <button type="button" className="linkish" onClick={onExit}>
+          Home
+        </button>
       </p>
     </section>
   )

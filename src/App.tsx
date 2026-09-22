@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import Intro from './components/Intro'
 import Deck from './components/Deck'
+import InfiniteDeck from './components/InfiniteDeck'
+import History from './components/History'
 import Results from './components/Results'
 import { curatedProvider, voteIgnore, type HomeImage } from './data/images'
 import {
@@ -16,11 +18,24 @@ import {
   type QuizState,
   type Verdict,
 } from './engine/quiz'
+import {
+  createInfinite,
+  currentImage as infiniteCurrent,
+  fromSaved,
+  judge as applyJudge,
+  setVerdict as applySetVerdict,
+  skipCurrent as applySkipCurrent,
+  toSaved,
+  undo as applyInfiniteUndo,
+  type InfiniteState,
+  type SavedInfinite,
+} from './engine/infinite'
 import { STYLES } from './data/taxonomy'
 
-type Screen = 'intro' | 'quiz' | 'results'
+type Screen = 'intro' | 'quiz' | 'results' | 'endless' | 'history' | 'endless-results'
 
 const STORAGE_KEY = 'home-style-chooser/session/v1'
+const ENDLESS_KEY = 'home-style-chooser/infinite/v1'
 
 /**
  * The deck is snapshotted rather than replayed. Replaying verdicts through a fresh
@@ -92,12 +107,32 @@ function restore(pool: HomeImage[], saved: Saved): QuizState | null {
   }
 }
 
+function saveEndless(state: InfiniteState) {
+  try {
+    localStorage.setItem(ENDLESS_KEY, JSON.stringify(toSaved(state)))
+  } catch {
+    // Private mode / quota — swiping still works, it just won't survive a reload.
+  }
+}
+
+function readEndless(): SavedInfinite | null {
+  try {
+    const raw = localStorage.getItem(ENDLESS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SavedInfinite
+    return Array.isArray(parsed.answers) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
   const [pool, setPool] = useState<HomeImage[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [screen, setScreen] = useState<Screen>('intro')
   const [quiz, setQuiz] = useState<QuizState | null>(null)
   const [saved, setSaved] = useState<Saved | null>(null)
+  const [endless, setEndless] = useState<InfiniteState | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -107,6 +142,10 @@ export default function App() {
         if (cancelled) return
         setPool(images)
         setSaved(readSaved())
+        // Built eagerly so the intro can show the running count, and so opening the mode
+        // is instant rather than shuffling 3000 ids on the click.
+        const savedEndless = readEndless()
+        setEndless(savedEndless ? fromSaved(images, savedEndless) : createInfinite(images))
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err))
@@ -119,6 +158,12 @@ export default function App() {
   useEffect(() => {
     if (quiz) save(quiz)
   }, [quiz])
+
+  // Every verdict is written straight away — the whole point of the mode is that you can
+  // stop mid-swipe and come back next week.
+  useEffect(() => {
+    if (endless) saveEndless(endless)
+  }, [endless])
 
   const start = useCallback(() => {
     if (!pool) return
@@ -174,6 +219,28 @@ export default function App() {
     })
   }, [])
 
+  const onJudge = useCallback((verdict: Verdict) => {
+    setEndless((prev) => (prev ? applyJudge(prev, verdict) : prev))
+  }, [])
+
+  const onEndlessUndo = useCallback(() => {
+    setEndless((prev) => (prev ? applyInfiniteUndo(prev) : prev))
+  }, [])
+
+  const onEndlessIgnore = useCallback(() => {
+    setEndless((prev) => {
+      if (!prev) return prev
+      const img = infiniteCurrent(prev)
+      // Fire-and-forget: the vote is a nicety, dropping the card is the point.
+      if (img) void voteIgnore(img.id)
+      return applySkipCurrent(prev)
+    })
+  }, [])
+
+  const onSetVerdict = useCallback((imageId: string, verdict: Verdict | null) => {
+    setEndless((prev) => (prev ? applySetVerdict(prev, imageId, verdict) : prev))
+  }, [])
+
   const restart = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
     setSaved(null)
@@ -220,6 +287,8 @@ export default function App() {
           round2Cards={DEFAULT_CONFIG.phase2Focus * DEFAULT_CONFIG.phase2PerStyle}
           onStart={start}
           onResume={saved && !saved.done ? resume : undefined}
+          onInfinite={() => setScreen('endless')}
+          infiniteJudged={endless?.answers.length ?? 0}
         />
       )}
       {screen === 'quiz' && quiz && (
@@ -232,6 +301,31 @@ export default function App() {
         />
       )}
       {screen === 'results' && quiz && <Results state={quiz} onRestart={restart} />}
+      {screen === 'endless' && endless && (
+        <InfiniteDeck
+          state={endless}
+          onJudge={onJudge}
+          onUndo={onEndlessUndo}
+          onIgnore={onEndlessIgnore}
+          onHistory={() => setScreen('history')}
+          onResults={() => setScreen('endless-results')}
+          onExit={() => setScreen('intro')}
+        />
+      )}
+      {screen === 'history' && endless && (
+        <History
+          state={endless}
+          onSetVerdict={onSetVerdict}
+          onBack={() => setScreen('endless')}
+        />
+      )}
+      {screen === 'endless-results' && endless && (
+        <Results
+          state={endless}
+          onRestart={() => setScreen('endless')}
+          restartLabel="Back to swiping"
+        />
+      )}
     </main>
   )
 }
