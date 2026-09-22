@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   likedImages,
   scoreAttributes,
@@ -26,12 +26,13 @@ const pct = (n: number) => `${Math.round(n * 100)}%`
 
 /**
  * The gallery renders one thumbnail per liked photo. Fine for a 47-card quiz; in endless
- * mode that reaches four figures, so show the most recent and point at the history screen
- * for the rest.
+ * mode it reaches four figures, so it opens on the most recent and expands on request
+ * rather than putting a thousand images in the DOM before you've asked for them.
  */
 const GALLERY_LIMIT = 60
 
 export default function Results({ state, onRestart, restartLabel = 'Start over' }: Props) {
+  const [showAllLiked, setShowAllLiked] = useState(false)
   const styles = useMemo(() => scoreStyles(state), [state])
   const rooms = useMemo(() => scoreRooms(state), [state])
   const liked = useMemo(() => likedImages(state), [state])
@@ -206,10 +207,26 @@ export default function Results({ state, onRestart, restartLabel = 'Start over' 
         <>
           <h2 className="section-title">Everything you loved ({liked.length})</h2>
           {liked.length > GALLERY_LIMIT && (
-            <p className="aside aside--muted">Showing the {GALLERY_LIMIT} most recent.</p>
+            <p className="aside aside--muted">
+              {showAllLiked ? (
+                <>
+                  All {liked.length}, newest first.{' '}
+                  <button type="button" className="linkish" onClick={() => setShowAllLiked(false)}>
+                    Show fewer
+                  </button>
+                </>
+              ) : (
+                <>
+                  The {GALLERY_LIMIT} most recent.{' '}
+                  <button type="button" className="linkish" onClick={() => setShowAllLiked(true)}>
+                    Show all {liked.length}
+                  </button>
+                </>
+              )}
+            </p>
           )}
           <div className="gallery">
-            {liked.slice(0, GALLERY_LIMIT).map((img) => (
+            {(showAllLiked ? liked : liked.slice(0, GALLERY_LIMIT)).map((img) => (
               <a
                 key={img.id}
                 className="gallery__item"

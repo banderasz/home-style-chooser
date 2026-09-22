@@ -299,6 +299,9 @@ firm up as you go, and change your mind afterwards.
   cycles liked → not for me → unjudged. Clearing a verdict removes it from the scoring
   *and* returns the photo to the deck — "I shouldn't have judged this" is a different
   statement from "I disliked it", and only one of them is evidence.
+- **Nothing is hidden.** History shows every photo you've judged. The results page opens
+  its liked-photos gallery on the 60 most recent — a thousand thumbnails is a lot to build
+  before you've asked — with *Show all* to expand it.
 - **Startable over.** A quiet link under the History grid, gated behind a two-tap confirm
   that disarms itself after five seconds — at a few hundred verdicts a stray tap would
   hurt. It reshuffles with a fresh seed, so starting over isn't a replay of the same order.
