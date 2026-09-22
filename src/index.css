@@ -167,6 +167,10 @@ h1 {
   cursor: pointer;
 }
 
+.linkish--warn {
+  color: var(--nope);
+}
+
 /* ---------- intro ---------- */
 
 .intro {
@@ -740,6 +744,15 @@ h1 {
 
 .history__filters {
   margin-bottom: 16px;
+}
+
+/* Deliberately quiet and below the fold of the grid — deleting hundreds of verdicts
+   should take looking for it. */
+.history__reset {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .chip--button {

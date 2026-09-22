@@ -299,6 +299,9 @@ firm up as you go, and change your mind afterwards.
   cycles liked → not for me → unjudged. Clearing a verdict removes it from the scoring
   *and* returns the photo to the deck — "I shouldn't have judged this" is a different
   statement from "I disliked it", and only one of them is evidence.
+- **Startable over.** A quiet link under the History grid, gated behind a two-tap confirm
+  that disarms itself after five seconds — at a few hundred verdicts a stray tap would
+  hurt. It reshuffles with a fresh seed, so starting over isn't a replay of the same order.
 - **Saved on this device**, under `home-style-chooser/infinite/v1`, after every swipe.
   Unlike the quiz, a retired photo costs one verdict rather than the whole session: the
   answers name their own images, so the rest restore fine.

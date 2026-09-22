@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { history, stats, type InfiniteState } from '../engine/infinite'
 import { styleLabel } from '../data/taxonomy'
 import type { Verdict } from '../engine/quiz'
@@ -7,6 +7,8 @@ interface Props {
   state: InfiniteState
   onSetVerdict: (imageId: string, verdict: Verdict | null) => void
   onBack: () => void
+  /** Throws away every verdict and reshuffles. Gated behind a confirm. */
+  onReset: () => void
 }
 
 type Filter = 'all' | 'like' | 'dislike'
@@ -21,10 +23,19 @@ const NEXT_VERDICT: Record<Verdict, Verdict | null> = {
   dislike: null,
 }
 
-export default function History({ state, onSetVerdict, onBack }: Props) {
+export default function History({ state, onSetVerdict, onBack, onReset }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [confirmReset, setConfirmReset] = useState(false)
   const all = useMemo(() => history(state), [state])
   const s = stats(state)
+
+  // Arming the reset and then wandering off shouldn't leave a live trigger sitting there
+  // for the next tap. Disarm after a few seconds.
+  useEffect(() => {
+    if (!confirmReset) return
+    const t = window.setTimeout(() => setConfirmReset(false), 5000)
+    return () => window.clearTimeout(t)
+  }, [confirmReset])
 
   const shown = filter === 'all' ? all : all.filter((h) => h.verdict === filter)
 
@@ -89,6 +100,26 @@ export default function History({ state, onSetVerdict, onBack }: Props) {
           Back to swiping
         </button>
       </div>
+
+      {s.judged > 0 && (
+        <p className="history__reset">
+          {confirmReset ? (
+            <>
+              <button type="button" className="linkish linkish--warn" onClick={onReset}>
+                Yes, delete all {s.judged} verdicts
+              </button>{' '}
+              ·{' '}
+              <button type="button" className="linkish" onClick={() => setConfirmReset(false)}>
+                keep them
+              </button>
+            </>
+          ) : (
+            <button type="button" className="linkish" onClick={() => setConfirmReset(true)}>
+              Start endless mode over
+            </button>
+          )}
+        </p>
+      )}
     </section>
   )
 }

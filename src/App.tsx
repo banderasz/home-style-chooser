@@ -248,6 +248,17 @@ export default function App() {
     setScreen('intro')
   }, [])
 
+  /**
+   * Throw away every endless verdict and reshuffle. A fresh seed, so starting over gives
+   * a genuinely different order rather than replaying the same sequence.
+   */
+  const resetEndless = useCallback(() => {
+    if (!pool) return
+    localStorage.removeItem(ENDLESS_KEY)
+    setEndless(createInfinite(pool))
+    setScreen('endless')
+  }, [pool])
+
   if (loadError) {
     return (
       <main className="app app--center">
@@ -317,6 +328,7 @@ export default function App() {
           state={endless}
           onSetVerdict={onSetVerdict}
           onBack={() => setScreen('endless')}
+          onReset={resetEndless}
         />
       )}
       {screen === 'endless-results' && endless && (
