@@ -5,6 +5,7 @@ import InfiniteDeck from './components/InfiniteDeck'
 import History from './components/History'
 import Results from './components/Results'
 import ProductDeck from './components/ProductDeck'
+import ProductCategoryPicker from './components/ProductCategoryPicker'
 import ProductHistory from './components/ProductHistory'
 import ProductResults from './components/ProductResults'
 import {
@@ -14,7 +15,7 @@ import {
   voteIgnore,
   type HomeImage,
 } from './data/images'
-import { ikeaProvider } from './data/products'
+import { ikeaProvider, type Product } from './data/products'
 import {
   answer as applyAnswer,
   createQuiz,
@@ -42,6 +43,7 @@ import {
   type SavedInfinite,
 } from './engine/infinite'
 import {
+  applyDeckOptions,
   createProductDeck,
   unskip as applyUnskip,
   unskipAll as applyUnskipAll,
@@ -57,6 +59,7 @@ type Screen =
   | 'endless'
   | 'history'
   | 'endless-results'
+  | 'shop-categories'
   | 'shop'
   | 'shop-history'
   | 'shop-results'
@@ -67,6 +70,26 @@ const ENDLESS_KEY = 'home-style-chooser/infinite/v1'
 // Hungarian one are two shortlists rather than one with mixed currencies in it.
 const SHOP_KEY = (market: string) => `home-style-chooser/shop/${market}/v1`
 const MARKET_KEY = 'home-style-chooser/shop-market'
+// Which categories to serve. Per market, because the ranges differ.
+const SHOP_CATEGORIES_KEY = (market: string) => `home-style-chooser/shop/${market}/categories`
+
+function readCategories(market: string): string[] {
+  try {
+    const raw = localStorage.getItem(SHOP_CATEGORIES_KEY(market))
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function saveCategories(market: string, categories: string[]) {
+  try {
+    localStorage.setItem(SHOP_CATEGORIES_KEY(market), JSON.stringify(categories))
+  } catch {
+    // Private mode — the filter just won't persist.
+  }
+}
 
 /**
  * The deck is snapshotted rather than replayed. Replaying verdicts through a fresh
@@ -196,6 +219,8 @@ export default function App() {
   const [market, setMarket] = useState<MarketId>(readMarket)
   const [shop, setShop] = useState<ProductState | null>(null)
   const [shopError, setShopError] = useState<string | null>(null)
+  const [products, setProducts] = useState<Product[] | null>(null)
+  const [categories, setCategories] = useState<string[]>([])
   const [ignoredCount, setIgnoredCount] = useState(0)
 
   useEffect(() => {
@@ -242,6 +267,28 @@ export default function App() {
    * A finished quiz seeds the order: products carrying adjectives you liked come first.
    * With no quiz, it's a plain shuffle rather than a guess dressed up as personalisation.
    */
+  /**
+   * Adjectives the finished session actually liked. Both modes share the axis, so
+   * "you liked wooden, curved, calm rooms" transfers straight onto objects.
+   */
+  const preferredAttributes = useCallback(() => {
+    const source = quiz?.done ? quiz : endless?.answers.length ? endless : null
+    return source
+      ? scoreAttributes(source)
+          .filter((a) => a.seen >= 2 && a.rate >= 0.55)
+          .map((a) => a.tagId)
+      : []
+  }, [quiz, endless])
+
+  /**
+   * Open the product mode for a market, loading the catalog on first use. It is a second
+   * megabyte of JSON that most sessions never touch, so it is deliberately *not* fetched
+   * alongside the photos — the intro screen should paint at the same speed either way.
+   *
+   * Lands on the category picker unless this market already has a session going, in which
+   * case it goes straight back to swiping — being asked what you're shopping for every
+   * single time would be a tax on the common case.
+   */
   const openShop = useCallback(
     async (next: MarketId = market) => {
       setShopError(null)
@@ -251,28 +298,44 @@ export default function App() {
       } catch {
         // Not worth failing the navigation over.
       }
-      setScreen('shop')
+      const savedShop = readShop(next)
+      const resuming = Boolean(savedShop?.answers?.length)
+      setScreen(resuming ? 'shop' : 'shop-categories')
       try {
         const all = await ikeaProvider.load(next)
-        // Adjectives the finished session actually liked. Both modes share the axis, so
-        // "you liked wooden, curved, calm rooms" transfers straight onto objects.
-        const source = quiz?.done ? quiz : endless?.answers.length ? endless : null
-        const preferred = source
-          ? scoreAttributes(source)
-              .filter((a) => a.seen >= 2 && a.rate >= 0.55)
-              .map((a) => a.tagId)
-          : []
-        const savedShop = readShop(next)
-        const base = createProductDeck(all, undefined, preferred)
-        // Keep the affinity-ordered queue even when resuming: `fromSaved` rebuilds a
-        // plain shuffle from the seed, and stepping over judged cards means the restored
-        // verdicts survive the reorder untouched.
-        setShop(savedShop ? { ...fromSaved(all, savedShop), queue: base.queue } : base)
+        const picked = readCategories(next)
+        setProducts(all)
+        setCategories(picked)
+        const options = { categories: picked, preferredAttributes: preferredAttributes() }
+        const base = createProductDeck(all, undefined, options)
+        // Resuming keeps the verdicts and re-derives the queue, so a filter saved last
+        // session still applies and nothing judged is forgotten.
+        setShop(
+          savedShop ? applyDeckOptions({ ...fromSaved(all, savedShop) }, options) : base,
+        )
       } catch (err: unknown) {
         setShopError(err instanceof Error ? err.message : String(err))
       }
     },
-    [market, quiz, endless],
+    [market, preferredAttributes],
+  )
+
+  /** Apply a category selection, keeping every verdict. */
+  const chooseCategories = useCallback(
+    (picked: string[]) => {
+      setCategories(picked)
+      saveCategories(market, picked)
+      setShop((prev) =>
+        prev
+          ? applyDeckOptions(prev, {
+              categories: picked,
+              preferredAttributes: preferredAttributes(),
+            })
+          : prev,
+      )
+      setScreen('shop')
+    },
+    [market, preferredAttributes],
   )
 
   const start = useCallback(() => {
@@ -517,10 +580,39 @@ export default function App() {
             onJudge={onShopJudge}
             onUndo={onShopUndo}
             onSkip={onShopSkip}
+            categories={categories}
+            onCategories={() => setScreen('shop-categories')}
             onHistory={() => setScreen('shop-history')}
             onResults={() => setScreen('shop-results')}
             onExit={() => setScreen('intro')}
           />
+        ) : (
+          <div className="spinner" aria-label="Loading" />
+        ))}
+      {screen === 'shop-categories' &&
+        (products ? (
+          <ProductCategoryPicker
+            pool={products}
+            market={market}
+            selected={categories}
+            onConfirm={chooseCategories}
+            onBack={shop && shop.answers.length > 0 ? () => setScreen('shop') : undefined}
+            onExit={() => setScreen('intro')}
+          />
+        ) : shopError ? (
+          <div className="notice">
+            <h1>Couldn't load the product catalog</h1>
+            <p>{shopError}</p>
+            <p className="notice__hint">
+              Run <code>npm run harvest-products</code> to build{' '}
+              <code>src/data/products.json</code>.
+            </p>
+            <div className="results__actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setScreen('intro')}>
+                Home
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="spinner" aria-label="Loading" />
         ))}

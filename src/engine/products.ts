@@ -22,7 +22,14 @@ import {
   type Colour,
 } from '../data/product-taxonomy'
 import { createInfinite, type InfiniteState } from './infinite'
-import { rankTags, type TagEvidence, type TagScore, type Verdict } from './quiz'
+import {
+  mulberry32,
+  rankTags,
+  shuffled,
+  type TagEvidence,
+  type TagScore,
+  type Verdict,
+} from './quiz'
 
 export type ProductState = InfiniteState<Product>
 
@@ -274,28 +281,84 @@ export function unskipAll(state: ProductState): ProductState {
   return { ...state, skipped: [], cursor: earliest }
 }
 
+export interface DeckOptions {
+  /**
+   * Only serve these categories. An empty list means all of them — "I've deselected
+   * everything" and "I haven't chosen" want the same behaviour, which is to show you the
+   * catalog rather than an empty deck.
+   */
+  categories?: string[]
+  /** Adjectives a finished quiz found you liked, used to bias the order. */
+  preferredAttributes?: string[]
+}
+
 /**
- * Order the deck so products matching a finished quiz's adjective profile come first.
+ * Build the swipe queue.
  *
- * The swipe order is still seeded and stable — this only re-sorts within the shuffle, by
- * how many liked adjectives a product carries. Without a quiz result it is a no-op and
- * the deck stays a plain shuffle, which is the right default: with no evidence, any
- * ordering is a guess dressed up as personalisation.
+ * The category filter narrows the **queue**, never the pool. That distinction matters:
+ * verdicts are keyed by product id and the statistics run over the pool, so filtering
+ * down to lamps and back out again leaves every earlier verdict intact and still counted.
+ * Filtering the pool instead would drop them on the next reload, because `fromSaved`
+ * discards answers naming products the pool no longer has.
+ *
+ * Preferred attributes then re-sort within the shuffle — stably, so the same seed gives
+ * the same deck. Without a quiz result it is a no-op, which is the right default: with no
+ * evidence, any ordering is a guess dressed up as personalisation.
  */
 export function createProductDeck(
   pool: Product[],
   seed?: number,
-  preferredAttributes: string[] = [],
+  { categories = [], preferredAttributes = [] }: DeckOptions = {},
 ): ProductState {
   const base = createInfinite(pool, seed)
-  if (preferredAttributes.length === 0) return base
+  return applyDeckOptions(base, { categories, preferredAttributes })
+}
 
-  const wanted = new Set(preferredAttributes)
-  const index = indexOf(pool)
-  const affinity = (id: string) =>
-    (index.get(id)?.attributes ?? []).filter((a) => wanted.has(a)).length
+/**
+ * Re-filter and re-order an existing deck, keeping every verdict. Used when the category
+ * selection changes mid-session.
+ */
+export function applyDeckOptions(
+  state: ProductState,
+  { categories = [], preferredAttributes = [] }: DeckOptions = {},
+): ProductState {
+  const index = indexOf(state.pool)
+  // Rebuild from the seed rather than from the current queue, so repeatedly narrowing and
+  // widening the filter can't progressively lose products.
+  let queue = shuffled(state.pool, mulberry32(state.seed)).map((p) => p.id)
 
-  // A stable sort on a shuffled list: products with equal affinity keep their shuffled
-  // order, so two runs with the same seed still produce the same deck.
-  return { ...base, queue: [...base.queue].sort((a, b) => affinity(b) - affinity(a)) }
+  if (categories.length > 0) {
+    const wanted = new Set(categories)
+    queue = queue.filter((id) =>
+      (index.get(id)?.categories ?? []).some((c) => wanted.has(c)),
+    )
+  }
+
+  if (preferredAttributes.length > 0) {
+    const liked = new Set(preferredAttributes)
+    const affinity = (id: string) =>
+      (index.get(id)?.attributes ?? []).filter((a) => liked.has(a)).length
+    queue = [...queue].sort((a, b) => affinity(b) - affinity(a))
+  }
+
+  const judged = new Set([...state.answers.map((a) => a.imageId), ...state.skipped])
+  let cursor = 0
+  while (cursor < queue.length && judged.has(queue[cursor])) cursor++
+
+  return { ...state, queue, cursor }
+}
+
+/** How many products each category offers, for the picker. */
+export function categoryCounts(pool: Product[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const p of pool) {
+    for (const c of p.categories) counts.set(c, (counts.get(c) ?? 0) + 1)
+  }
+  return counts
+}
+
+/** Products left to judge, within the current category selection. */
+export function remainingInDeck(state: ProductState): number {
+  const judged = new Set([...state.answers.map((a) => a.imageId), ...state.skipped])
+  return state.queue.filter((id) => !judged.has(id)).length
 }

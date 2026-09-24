@@ -1065,3 +1065,30 @@ code {
   opacity: 0.55;
   border-style: dashed;
 }
+
+/* The active category filter, shown in the deck header. A filter you can't see is a
+   filter you'll blame the catalog for. */
+.deck-header__filter {
+  margin: 6px 0 0;
+}
+
+.deck-header__filter .chip {
+  font-size: 12px;
+  padding: 5px 11px;
+}
+
+.pickgroup {
+  margin-bottom: 4px;
+}
+
+.pickgroup__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pickgroup__all {
+  font-size: 12px;
+  font-weight: 400;
+}

@@ -3,8 +3,8 @@ import ProductCard from './ProductCard'
 import { useShowTags } from './useShowTags'
 import { currentImage, stats, upcoming } from '../engine/infinite'
 import type { Verdict } from '../engine/quiz'
-import { likedTotal, type ProductState } from '../engine/products'
-import { MARKET_BY_ID, formatPrice } from '../data/product-taxonomy'
+import { likedTotal, remainingInDeck, type ProductState } from '../engine/products'
+import { MARKET_BY_ID, categoryLabel, formatPrice } from '../data/product-taxonomy'
 
 interface Props {
   state: ProductState
@@ -12,6 +12,9 @@ interface Props {
   onJudge: (verdict: Verdict) => void
   onUndo: () => void
   onSkip: () => void
+  /** Selected categories, empty for all — shown so the filter is never invisible. */
+  categories: string[]
+  onCategories: () => void
   onHistory: () => void
   onResults: () => void
   onExit: () => void
@@ -23,6 +26,8 @@ export default function ProductDeck({
   onJudge,
   onUndo,
   onSkip,
+  categories,
+  onCategories,
   onHistory,
   onResults,
   onExit,
@@ -35,6 +40,8 @@ export default function ProductDeck({
   const s = stats(state)
 
   const basket = useMemo(() => likedTotal(state), [state])
+  // Within the filter, not the whole catalog — `stats.remaining` counts the pool.
+  const left = useMemo(() => remainingInDeck(state), [state])
 
   /** Same protocol as the other decks — clear the command in the same update. */
   const handleDecide = useCallback(
@@ -67,14 +74,26 @@ export default function ProductDeck({
     return (
       <section className="deck-screen deck-screen--done">
         <div className="notice">
-          <h1>That's the whole range</h1>
+          <h1>
+            {categories.length > 0
+              ? "That's everything in those categories"
+              : "That's the whole range"}
+          </h1>
           <p>
-            {s.judged} products judged, {s.liked} saved. Nothing left until the next harvest.
+            {s.judged} products judged, {s.liked} saved.{' '}
+            {categories.length > 0
+              ? 'Widen the filter for more, or see what you picked.'
+              : 'Nothing left until the next harvest.'}
           </p>
           <div className="results__actions">
             <button type="button" className="btn btn--primary" onClick={onResults}>
               See your list
             </button>
+            {categories.length > 0 && (
+              <button type="button" className="btn btn--ghost" onClick={onCategories}>
+                Pick more categories
+              </button>
+            )}
             <button type="button" className="btn btn--ghost" onClick={onHistory}>
               Review everything
             </button>
@@ -105,10 +124,20 @@ export default function ProductDeck({
               tags
             </button>
             <span className="deck-header__count">
-              {s.liked} saved · {s.remaining} left
+              {s.liked} saved · {left} left
             </span>
           </span>
         </div>
+        <p className="deck-header__filter">
+          <button type="button" className="chip chip--button chip--on" onClick={onCategories}>
+            {categories.length === 0
+              ? 'All categories'
+              : categories.length <= 3
+                ? categories.map(categoryLabel).join(', ')
+                : `${categories.length} categories`}
+            {' \u25be'}
+          </button>
+        </p>
         {/* A running tally, not a prediction. An earlier version showed a live "leaning
             beige solid wood" here, which read as the app making up its mind about you
             mid-session — and it changed on almost every swipe, so it was noise pretending

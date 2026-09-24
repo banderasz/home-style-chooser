@@ -710,6 +710,59 @@ test('room-only adjectives never reach the product attribute ranking', () => {
   assert.ok(!ids.includes('spacious'), 'spacious is not a property of an object')
 })
 
+test('a category filter narrows the queue but never the pool', () => {
+  const s = P.createProductDeck(PRODUCTS, 1, { categories: ['sofa', 'armchair'] })
+  assert.equal(s.pool.length, PRODUCTS.length, 'the pool must stay whole')
+  assert.equal(s.queue.length, 16, 'two categories of eight')
+  const served = new Set(s.queue.map((id) => id.split('-').slice(0, -1).join('-')))
+  assert.deepEqual([...served].sort(), ['armchair', 'sofa'])
+})
+
+test('an empty selection means everything, not nothing', () => {
+  const s = P.createProductDeck(PRODUCTS, 1, { categories: [] })
+  assert.equal(s.queue.length, PRODUCTS.length)
+})
+
+test('changing the filter keeps every verdict already given', () => {
+  let s = P.createProductDeck(PRODUCTS, 1, { categories: ['sofa'] })
+  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'sofa')) {
+    s = I.setVerdict(s, p.id, 'like')
+  }
+  assert.equal(s.answers.length, 8)
+
+  // Switch to a completely different category.
+  const narrowed = P.applyDeckOptions(s, { categories: ['pendant'] })
+  assert.equal(narrowed.answers.length, 8, 'sofa verdicts survive a filter that excludes them')
+  assert.equal(P.summary(narrowed).categories.find((c) => c.tagId === 'sofa').liked, 8)
+  assert.ok(
+    narrowed.queue.every((id) => id.startsWith('pendant-')),
+    'but the deck now only serves pendants',
+  )
+  assert.equal(I.currentImage(narrowed).categories[0], 'pendant')
+})
+
+test('widening the filter again brings the unjudged products back', () => {
+  let s = P.createProductDeck(PRODUCTS, 1, { categories: ['sofa'] })
+  s = I.setVerdict(s, 'sofa-0', 'like')
+
+  const narrow = P.applyDeckOptions(s, { categories: ['pendant'] })
+  const wide = P.applyDeckOptions(narrow, { categories: [] })
+  assert.equal(wide.queue.length, PRODUCTS.length, 'nothing is lost by round-tripping')
+  assert.equal(P.remainingInDeck(wide), PRODUCTS.length - 1, 'minus the one judged')
+})
+
+test('remaining counts the filter, not the catalog', () => {
+  const s = P.createProductDeck(PRODUCTS, 1, { categories: ['sofa'] })
+  assert.equal(P.remainingInDeck(s), 8)
+  assert.equal(I.stats(s).remaining, PRODUCTS.length, 'stats still reports the whole pool')
+})
+
+test('category counts drive the picker', () => {
+  const counts = P.categoryCounts(PRODUCTS)
+  assert.equal(counts.get('sofa'), 8)
+  assert.equal(counts.get('nonexistent'), undefined)
+})
+
 test('the summary reports raw counts, not the smoothed ranking rate', () => {
   let s = P.createProductDeck(PRODUCTS, 1)
   // Four of the five wood sofas liked — the summary must say 80%, because it prints

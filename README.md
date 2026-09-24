@@ -87,7 +87,7 @@ Other scripts:
 | `npm run prune`           | Drop greyscale, non-room and Ignore-flagged photos       |
 | `npm run verify-catalog`  | Drop catalog entries whose URL no longer resolves        |
 | `npm run harvest-products`| Build the IKEA product catalog (AT + HU, no API key)    |
-| `npm test`                | 56 assertions over the engines and the lexicon            |
+| `npm test`                | 62 assertions over the engines and the lexicon            |
 | `npm run typecheck`       | `tsc --noEmit`                                           |
 | `npm run build`           | Typecheck + production build to `dist/`                  |
 
@@ -401,6 +401,33 @@ The adjective axis also used to include the adjective each colour and material i
 restatement of the other two axes, and the catalog's "strongest correlations" came out as
 ceramic↔stone and black↔monochrome — one signal counted twice, which a recommender reads
 as corroboration. Adjectives now add information or they stay empty.
+
+## Choosing what to swipe
+
+3,206 products in the Austrian catalog is too many to wade through when you want a lamp.
+Entering shopping mode opens a category picker first — 31 categories in seven groups, with
+the count behind each one, and an *all / none* toggle per group:
+
+```
+Seating          Sofa 197 · Armchair 149 · Dining chair 77 · Stool 89 · Bench 49
+Lighting         Pendant lamp 103 · Floor lamp 47 · Table lamp 50 · Wall lamp 32
+Decor            Mirror 94 · Vase 75 · Wall art 16 · Picture frame 154 · Plant pot 128 …
+```
+
+Picking nothing means everything, because "I deselected the last one" and "I haven't
+chosen yet" should both show you the catalog rather than an empty deck.
+
+The filter narrows the **queue, never the pool**, and that is the whole design. Verdicts
+are keyed by product id and the statistics run over the pool, so you can swipe twenty
+lamps, switch to sofas, and every lamp verdict is still counted and still in the history.
+Filtering the pool instead would lose them on the next reload, because `fromSaved` drops
+answers naming products the pool no longer has.
+
+The selection persists per market and is shown as a chip in the deck header — a filter you
+can't see is a filter you'll blame the catalog for. Running out mid-filter says so, and
+offers to widen it, rather than claiming the range is exhausted. Re-entering the mode with
+a session already going skips the picker; being asked what you're shopping for every time
+would tax the common case.
 
 ## What the shopping result screen shows
 
