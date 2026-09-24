@@ -3,14 +3,7 @@ import ProductCard from './ProductCard'
 import { useShowTags } from './useShowTags'
 import { currentImage, stats, upcoming } from '../engine/infinite'
 import type { Verdict } from '../engine/quiz'
-import {
-  likedTotal,
-  scoreCategories,
-  scoreColours,
-  scoreMaterials,
-  type ProductState,
-} from '../engine/products'
-import { categoryLabel, colourLabel, materialLabel } from '../data/product-taxonomy'
+import { likedTotal, type ProductState } from '../engine/products'
 import { MARKET_BY_ID, formatPrice } from '../data/product-taxonomy'
 
 interface Props {
@@ -19,6 +12,7 @@ interface Props {
   onJudge: (verdict: Verdict) => void
   onUndo: () => void
   onSkip: () => void
+  onHistory: () => void
   onResults: () => void
   onExit: () => void
 }
@@ -29,6 +23,7 @@ export default function ProductDeck({
   onJudge,
   onUndo,
   onSkip,
+  onHistory,
   onResults,
   onExit,
 }: Props) {
@@ -38,16 +33,6 @@ export default function ProductDeck({
   const top = currentImage(state)
   const next = useMemo(() => upcoming(state, 2), [state])
   const s = stats(state)
-
-  // The live read. Unlike the endless deck's single "leading style", a product session
-  // has no one headline — the useful signal is the pair you're converging on, so show
-  // the strongest material and colour together.
-  const leader = useMemo(() => {
-    const material = scoreMaterials(state)[0] ?? null
-    const colour = scoreColours(state)[0] ?? null
-    const category = scoreCategories(state)[0] ?? null
-    return { material, colour, category }
-  }, [state])
 
   const basket = useMemo(() => likedTotal(state), [state])
 
@@ -90,6 +75,9 @@ export default function ProductDeck({
             <button type="button" className="btn btn--primary" onClick={onResults}>
               See your list
             </button>
+            <button type="button" className="btn btn--ghost" onClick={onHistory}>
+              Review everything
+            </button>
             <button type="button" className="btn btn--ghost" onClick={onExit}>
               Home
             </button>
@@ -121,29 +109,26 @@ export default function ProductDeck({
             </span>
           </span>
         </div>
+        {/* A running tally, not a prediction. An earlier version showed a live "leaning
+            beige solid wood" here, which read as the app making up its mind about you
+            mid-session — and it changed on almost every swipe, so it was noise pretending
+            to be insight. The numbers below are just what has happened. */}
         <p className="deck-header__leader">
-          {leader.material || leader.colour ? (
-            <>
-              Leaning{' '}
-              <strong>
-                {[
-                  leader.colour && colourLabel(leader.colour.tagId),
-                  leader.material && materialLabel(leader.material.tagId).toLowerCase(),
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              </strong>{' '}
-              <span className="deck-header__muted">
-                {leader.category ? `· best on ${categoryLabel(leader.category.tagId)} ` : ''}
-                {basket.length > 0 &&
-                  `· basket ${basket
-                    .map((t) => formatPrice({ amount: t.amount, currency: t.currency }))
-                    .join(' + ')}`}
-              </span>
-            </>
+          {s.judged > 0 ? (
+            <span className="deck-header__muted">
+              {s.liked} saved of {s.judged} judged ({Math.round(s.likeRate * 100)}%)
+              {basket.length > 0 &&
+                ` · basket ${basket
+                  .map((t) => formatPrice({ amount: t.amount, currency: t.currency }))
+                  .join(' + ')}`}
+              {' · '}
+              <button type="button" className="linkish" onClick={onHistory}>
+                history
+              </button>
+            </span>
           ) : (
             <span className="deck-header__muted">
-              Swipe a few and your palette will show up here.
+              Swipe right on anything you'd actually put in your home.
             </span>
           )}
         </p>
@@ -213,6 +198,10 @@ export default function ProductDeck({
         Saved as you go.{' '}
         <button type="button" className="linkish" onClick={onResults}>
           Your list
+        </button>{' '}
+        ·{' '}
+        <button type="button" className="linkish" onClick={onHistory}>
+          History
         </button>{' '}
         ·{' '}
         <button type="button" className="linkish" onClick={onExit}>

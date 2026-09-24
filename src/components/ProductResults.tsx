@@ -2,31 +2,18 @@ import { useMemo, useState } from 'react'
 import {
   likedProducts,
   likedTotal,
-  recommend,
-  scoreCategories,
-  scoreColours,
-  scoreMaterials,
-  scoreProductAttributes,
   scoreTones,
-  type Affinity,
+  summary,
+  type TagBreakdown,
   type ProductState,
 } from '../engine/products'
-import { attributeLabel, ATTRIBUTE_BY_ID } from '../data/taxonomy'
-import {
-  COLOUR_BY_ID,
-  MARKET_BY_ID,
-  categoryLabel,
-  colourLabel,
-  formatPrice,
-  materialLabel,
-} from '../data/product-taxonomy'
+import { COLOUR_BY_ID, MARKET_BY_ID, categoryLabel, colourLabel, formatPrice } from '../data/product-taxonomy'
 
 interface Props {
   state: ProductState
   market: string
-  /** Catalog co-occurrence structure. Null until loaded, or if never generated. */
-  affinity: Affinity | null
   onKeepSwiping: () => void
+  onHistory: () => void
   onRestart: () => void
   onExit: () => void
 }
@@ -42,11 +29,42 @@ const TONE_COPY: Record<string, string> = {
   neutral: 'neutrals',
 }
 
+/**
+ * A tag's row in the statistics tables: the raw counts, and a bar split into the share
+ * you liked. Sorted by how often you saw it, not by rate — a tag seen twice at 100%
+ * should not sit above one seen forty times at 70%, and putting the counts on screen is
+ * a more honest way to say that than quietly reordering them.
+ */
+function TagTable({ rows, swatches = false }: { rows: TagBreakdown[]; swatches?: boolean }) {
+  if (rows.length === 0) return null
+  return (
+    <ul className="tagstats">
+      {rows.map((r) => (
+        <li key={r.tagId} className="tagstat">
+          <span className="tagstat__label">
+            {swatches && (
+              <i className="swatch" style={{ background: COLOUR_BY_ID.get(r.tagId)?.hex }} />
+            )}
+            {r.label}
+          </span>
+          <span className="tagstat__track" title={`${r.liked} liked of ${r.seen} seen`}>
+            <span className="tagstat__fill" style={{ width: pct(r.rate) }} />
+          </span>
+          <span className="tagstat__count">
+            {r.liked}/{r.seen}
+          </span>
+          <span className="tagstat__pct">{pct(r.rate)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export default function ProductResults({
   state,
   market,
-  affinity,
   onKeepSwiping,
+  onHistory,
   onRestart,
   onExit,
 }: Props) {
@@ -54,39 +72,10 @@ export default function ProductResults({
 
   const liked = useMemo(() => likedProducts(state), [state])
   const totals = useMemo(() => likedTotal(state), [state])
-  const categories = useMemo(() => scoreCategories(state), [state])
-  const materials = useMemo(() => scoreMaterials(state), [state])
-  const colours = useMemo(() => scoreColours(state), [state])
-  const attributes = useMemo(() => scoreProductAttributes(state), [state])
+  const s = useMemo(() => summary(state), [state])
   const tones = useMemo(() => scoreTones(state), [state])
 
-  const lovedMaterials = materials.filter((m) => m.rate >= 0.5).slice(0, 5)
-  const lovedColours = colours.filter((c) => c.rate >= 0.5).slice(0, 6)
-  const rejectedColours = [...colours].reverse().filter((c) => c.rate <= 0.35).slice(0, 4)
-  const lovedAttrs = attributes.filter((a) => a.rate >= 0.55).slice(0, 8)
-  const hatedAttrs = [...attributes].reverse().filter((a) => a.rate <= 0.4).slice(0, 5)
-
-  // "Curved, not geometric" reads better than two lists, where the pairing exists.
-  const contrasts = lovedAttrs
-    .map((a) => {
-      const opposite = ATTRIBUTE_BY_ID.get(a.tagId)?.opposite
-      const against = opposite && hatedAttrs.find((h) => h.tagId === opposite)
-      return against ? { liked: a.tagId, rejected: against.tagId } : null
-    })
-    .filter((c): c is { liked: string; rejected: string } => c !== null)
-    .slice(0, 3)
-
-  // A category you liked four of five of is a signal; one you saw twice is not.
-  const strongCategories = categories.filter((c) => c.seen >= 3)
-  const bestCategories = strongCategories.slice(0, 5)
-  const worstCategories = [...strongCategories].reverse().filter((c) => c.rate < 0.4).slice(0, 3)
-
   const tone = tones.find((t) => t.seen >= 3) ?? null
-  // Needs a few verdicts before it is anything but a shuffle with extra steps.
-  const picks = useMemo(
-    () => (state.answers.length >= 8 ? recommend(state, affinity, 9) : []),
-    [state, affinity],
-  )
   // Newest first, since the tail is what you were just looking at.
   const shown = showAll ? [...liked].reverse() : [...liked].reverse().slice(0, LIST_LIMIT)
 
@@ -105,15 +94,15 @@ export default function ProductResults({
     void navigator.clipboard?.writeText(lines.join('\n'))
   }
 
-  if (liked.length === 0) {
+  if (s.judged === 0) {
     return (
       <section className="results">
         <div className="notice">
-          <h1>Nothing saved yet</h1>
-          <p>Swipe right on something you'd actually put in your home and it'll land here.</p>
+          <h1>Nothing judged yet</h1>
+          <p>Swipe a few products and the numbers will show up here.</p>
           <div className="results__actions">
             <button type="button" className="btn btn--primary" onClick={onKeepSwiping}>
-              Keep swiping
+              Start swiping
             </button>
             <button type="button" className="btn btn--ghost" onClick={onExit}>
               Home
@@ -131,56 +120,30 @@ export default function ProductResults({
         <h1>
           {liked.length} {liked.length === 1 ? 'thing' : 'things'} you'd buy
         </h1>
-        {totals.length > 0 && (
-          <p className="results__summary">
-            {totals
-              .map((t) => formatPrice({ amount: t.amount, currency: t.currency }))
-              .join(' + ')}{' '}
-            all in, from IKEA {MARKET_BY_ID.get(market)?.label ?? market}.
-          </p>
-        )}
+        <p className="results__summary">
+          {totals.length > 0 && (
+            <>
+              {totals
+                .map((t) => formatPrice({ amount: t.amount, currency: t.currency }))
+                .join(' + ')}{' '}
+              all in, from IKEA {MARKET_BY_ID.get(market)?.label ?? market}.{' '}
+            </>
+          )}
+          You said yes to {pct(s.likeRate)} of the {s.judged} you looked at
+          {tone && (
+            <>
+              , and you lean <strong>{TONE_COPY[tone.tone] ?? tone.tone}</strong>
+            </>
+          )}
+          .
+        </p>
       </header>
 
-      {/* The list leads. Everything below it is explanation; this is the deliverable. */}
-      <h2 className="section-title">The list</h2>
-      <ul className="shoplist">
-        {shown.map((p) => (
-          <li key={p.id} className="shoplist__item">
-            <a href={p.url} target="_blank" rel="noreferrer noopener" className="shoplist__link">
-              <img className="shoplist__thumb" src={p.cutout ?? p.image} alt="" loading="lazy" />
-              <span className="shoplist__body">
-                <span className="shoplist__name">
-                  {p.name} <span className="card__type">{p.typeLabel}</span>
-                </span>
-                <span className="shoplist__meta">
-                  {p.categories.map(categoryLabel).join(', ')}
-                  {p.colours.length > 0 && ` · ${p.colours.map(colourLabel).join('/')}`}
-                </span>
-              </span>
-              <span className="shoplist__price">{formatPrice(p.price)}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      {!showAll && liked.length > LIST_LIMIT && (
-        <button
-          type="button"
-          className="btn btn--ghost btn--small"
-          onClick={() => setShowAll(true)}
-        >
-          Show all {liked.length}
-        </button>
-      )}
-
-      {picks.length > 0 && (
+      {liked.length > 0 && (
         <>
-          <h2 className="section-title">You haven't seen these yet</h2>
-          <p className="aside aside--muted">
-            Scored from what you've already said yes and no to, then spread across
-            categories so it isn't nine variations of the same thing.
-          </p>
+          <h2 className="section-title">The list</h2>
           <ul className="shoplist">
-            {picks.map(({ product: p, reasons }) => (
+            {shown.map((p) => (
               <li key={p.id} className="shoplist__item">
                 <a
                   href={p.url}
@@ -188,30 +151,14 @@ export default function ProductResults({
                   rel="noreferrer noopener"
                   className="shoplist__link"
                 >
-                  <img
-                    className="shoplist__thumb"
-                    src={p.cutout ?? p.image}
-                    alt=""
-                    loading="lazy"
-                  />
+                  <img className="shoplist__thumb" src={p.cutout ?? p.image} alt="" loading="lazy" />
                   <span className="shoplist__body">
                     <span className="shoplist__name">
                       {p.name} <span className="card__type">{p.typeLabel}</span>
                     </span>
                     <span className="shoplist__meta">
-                      {reasons.length > 0
-                        ? `because you liked ${reasons
-                            .map((r) =>
-                              r.axis === 'categories'
-                                ? categoryLabel(r.tag).toLowerCase()
-                                : r.axis === 'colours'
-                                  ? colourLabel(r.tag).toLowerCase()
-                                  : r.axis === 'materials'
-                                    ? materialLabel(r.tag).toLowerCase()
-                                    : attributeLabel(r.tag).toLowerCase(),
-                            )
-                            .join(', ')}`
-                        : categoryLabel(p.categories[0])}
+                      {p.categories.map(categoryLabel).join(', ')}
+                      {p.colours.length > 0 && ` · ${p.colours.map(colourLabel).join('/')}`}
                     </span>
                   </span>
                   <span className="shoplist__price">{formatPrice(p.price)}</span>
@@ -219,108 +166,51 @@ export default function ProductResults({
               </li>
             ))}
           </ul>
-        </>
-      )}
-
-      {(lovedColours.length > 0 || tone) && (
-        <>
-          <h2 className="section-title">Your palette</h2>
-          {tone && (
-            <p className="aside">
-              You go for <strong>{TONE_COPY[tone.tone] ?? tone.tone}</strong> — {pct(tone.rate)} of
-              them got a yes.
-            </p>
-          )}
-          <ul className="chips">
-            {lovedColours.map((c) => (
-              <li key={c.tagId} className="chip">
-                <i className="swatch" style={{ background: COLOUR_BY_ID.get(c.tagId)?.hex }} />
-                {colourLabel(c.tagId)} <span>{pct(c.rate)}</span>
-              </li>
-            ))}
-          </ul>
-          {rejectedColours.length > 0 && (
-            <p className="aside aside--muted">
-              Not your colours: {rejectedColours.map((c) => colourLabel(c.tagId)).join(', ')}.
-            </p>
+          {!showAll && liked.length > LIST_LIMIT && (
+            <button
+              type="button"
+              className="btn btn--ghost btn--small"
+              onClick={() => setShowAll(true)}
+            >
+              Show all {liked.length}
+            </button>
           )}
         </>
       )}
 
-      {lovedMaterials.length > 0 && (
-        <>
-          <h2 className="section-title">Materials you reach for</h2>
-          <ul className="chips">
-            {lovedMaterials.map((m) => (
-              <li key={m.tagId} className="chip">
-                {materialLabel(m.tagId)} <span>{pct(m.rate)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {/* Everything below is the same question asked four ways: of the things carrying
+          this tag that you were shown, how many did you keep? */}
+      <h2 className="section-title">Colours</h2>
+      <TagTable rows={s.colours} swatches />
 
-      {lovedAttrs.length > 0 && (
-        <>
-          <h2 className="section-title">How you like things to look</h2>
-          {contrasts.length > 0 && (
-            <p className="aside">
-              {contrasts.map((c, i) => (
-                <span key={c.liked}>
-                  {i > 0 && ' · '}
-                  <strong>{attributeLabel(c.liked)}</strong>, not{' '}
-                  {attributeLabel(c.rejected).toLowerCase()}
-                </span>
-              ))}
-            </p>
-          )}
-          <ul className="chips">
-            {lovedAttrs.map((a) => (
-              <li key={a.tagId} className="chip">
-                {attributeLabel(a.tagId)} <span>{pct(a.rate)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <h2 className="section-title">Materials</h2>
+      <TagTable rows={s.materials} />
 
-      {bestCategories.length > 0 && (
+      <h2 className="section-title">Categories</h2>
+      <TagTable rows={s.categories} />
+
+      {s.attributes.length > 0 && (
         <>
-          <h2 className="section-title">What you said yes to most</h2>
-          <ol className="score-list">
-            {bestCategories.map((c, i) => (
-              <li key={c.tagId} className={i < 3 ? 'score score--top' : 'score'}>
-                <div className="score__head">
-                  <span className="score__rank">{i + 1}</span>
-                  <span className="score__label">{categoryLabel(c.tagId)}</span>
-                  <span className="score__value">{pct(c.rate)}</span>
-                </div>
-                <div className="meter">
-                  <div className="meter__fill" style={{ width: pct(c.rate) }} />
-                </div>
-                <p className="score__detail">
-                  {Math.round(c.liked * 10) / 10} of {Math.round(c.seen * 10) / 10} liked
-                  {c.confidence < 0.4 ? ' · low confidence' : ''}
-                </p>
-              </li>
-            ))}
-          </ol>
-          {worstCategories.length > 0 && (
-            <p className="aside aside--muted">
-              Hard to please on: {worstCategories.map((c) => categoryLabel(c.tagId)).join(', ')}.
-            </p>
-          )}
+          <h2 className="section-title">Adjectives</h2>
+          <p className="aside aside--muted">
+            Only about 40% of the catalog carries these — IKEA's own data covers colour and
+            material far better than it describes how a thing looks.
+          </p>
+          <TagTable rows={s.attributes} />
         </>
       )}
 
       <p className="results__caveat">
-        {state.answers.length} judged · {liked.length} saved · {state.skipped.length} skipped.
-        Prices were correct at the last harvest — check the product page before you buy.
+        {s.judged} judged · {s.liked} saved · {s.skipped} skipped. Prices were correct at the
+        last harvest — check the product page before you buy.
       </p>
 
       <div className="results__actions">
         <button type="button" className="btn btn--primary" onClick={onKeepSwiping}>
           Keep swiping
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onHistory}>
+          History
         </button>
         <button type="button" className="btn btn--ghost" onClick={copyToClipboard}>
           Copy list

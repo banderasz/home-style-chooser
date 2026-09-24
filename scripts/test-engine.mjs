@@ -710,91 +710,89 @@ test('room-only adjectives never reach the product attribute ranking', () => {
   assert.ok(!ids.includes('spacious'), 'spacious is not a property of an object')
 })
 
-test('recommendations stay quiet until there is evidence', () => {
+test('the summary reports raw counts, not the smoothed ranking rate', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  // Four of the five wood sofas liked — the summary must say 80%, because it prints
+  // "4/5" right next to it and a Laplace-smoothed 71% would contradict its own maths.
+  const sofas = PRODUCTS.filter((p) => p.categories[0] === 'sofa').slice(0, 5)
+  sofas.forEach((p, i) => (s = I.setVerdict(s, p.id, i < 4 ? 'like' : 'dislike')))
+
+  const summary = P.summary(s)
+  const sofa = summary.categories.find((c) => c.tagId === 'sofa')
+  assert.equal(sofa.seen, 5)
+  assert.equal(sofa.liked, 4)
+  assert.equal(sofa.rate, 0.8, 'rate must be liked/seen exactly')
+  assert.equal(summary.judged, 5)
+  assert.equal(summary.liked, 4)
+  assert.equal(summary.likeRate, 0.8)
+})
+
+test('the summary orders tags by how much evidence there is, not by rate', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  // One stool, liked: a perfect rate on a single swipe.
+  s = I.setVerdict(s, 'sofa-0', 'like')
+  // Six lamps, four liked: a lower rate on far more evidence.
+  const lamps = PRODUCTS.filter((p) => p.categories[0] === 'floor-lamp').slice(0, 6)
+  lamps.forEach((p, i) => (s = I.setVerdict(s, p.id, i < 4 ? 'like' : 'dislike')))
+
+  const cats = P.summary(s).categories
+  assert.equal(cats[0].tagId, 'floor-lamp', 'the better-evidenced tag comes first')
+  assert.ok(cats[0].rate < cats[1].rate, 'even though its rate is lower')
+})
+
+test('history lists judged and skipped products, most recent first', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  s = I.setVerdict(s, 'sofa-0', 'like')
+  s = I.setVerdict(s, 'sofa-1', 'dislike')
+  s = { ...s, skipped: ['desk-0'] }
+
+  const h = P.productHistory(s)
+  assert.deepEqual(
+    h.map((x) => [x.product.id, x.verdict]),
+    [
+      ['sofa-1', 'dislike'],
+      ['sofa-0', 'like'],
+      ['desk-0', 'skipped'],
+    ],
+    'judged newest-first, then skips',
+  )
+})
+
+test('a skipped product can be restored to the deck', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  const first = s.queue[0]
+  s = I.skipCurrent(s)
+  assert.ok(s.skipped.includes(first), 'precondition: it was skipped')
+  assert.notEqual(I.currentImage(s).id, first, 'precondition: the deck moved on')
+
+  const restored = P.unskip(s, first)
+  assert.deepEqual(restored.skipped, [], 'the skip is gone')
+  assert.equal(I.currentImage(restored).id, first, 'and it is the card in front of you again')
+  assert.equal(
+    restored.answers.length,
+    0,
+    'restoring must not invent a verdict — a skip was never evidence',
+  )
+})
+
+test('restoring every skip rewinds to the earliest of them', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  const first = s.queue[0]
+  s = I.skipCurrent(s)
+  s = I.skipCurrent(s)
+  s = I.setVerdict(s, s.queue[2], 'like')
+  assert.equal(s.skipped.length, 2)
+
+  const restored = P.unskipAll(s)
+  assert.deepEqual(restored.skipped, [])
+  assert.equal(I.currentImage(restored).id, first, 'the deck rewinds to the first skip')
+  assert.equal(restored.answers.length, 1, 'verdicts given after the skips survive')
+})
+
+test('unskip is a no-op for a product that was never skipped', () => {
   const s = P.createProductDeck(PRODUCTS, 1)
-  assert.deepEqual(P.recommend(s, null, 5), [], 'no answers must mean no recommendations')
-})
-
-test('recommendations favour what was liked and never repeat a judged product', () => {
-  let s = P.createProductDeck(PRODUCTS, 1)
-  // Judge only the lamps, liking the metal ones.
-  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'floor-lamp')) {
-    s = I.setVerdict(s, p.id, 'like')
-  }
-  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'sofa')) {
-    s = I.setVerdict(s, p.id, 'dislike')
-  }
-
-  const picks = P.recommend(s, null, 6)
-  assert.ok(picks.length > 0, 'expected recommendations')
-
-  const judged = new Set(s.answers.map((a) => a.imageId))
-  assert.ok(
-    picks.every((r) => !judged.has(r.product.id)),
-    'a recommendation must never be something already judged',
-  )
-  assert.ok(
-    picks.filter((r) => r.product.materials.includes('metal')).length >
-      picks.filter((r) => r.product.materials.includes('solid-wood')).length,
-    'metal was liked and wood rejected, so metal should dominate',
-  )
-  assert.ok(
-    picks.every((r) => r.reasons.length > 0),
-    'every recommendation must be able to explain itself',
-  )
-})
-
-test('recommendations are spread across categories rather than one repeated lane', () => {
-  let s = P.createProductDeck(PRODUCTS, 1)
-  for (const p of PRODUCTS.filter((x) => x.materials.includes('metal')).slice(0, 4)) {
-    s = I.setVerdict(s, p.id, 'like')
-  }
-  for (const p of PRODUCTS.filter((x) => x.materials.includes('solid-wood')).slice(0, 4)) {
-    s = I.setVerdict(s, p.id, 'dislike')
-  }
-  const picks = P.recommend(s, null, 6)
-  const lanes = new Set(picks.map((r) => r.product.categories[0]))
-  assert.ok(lanes.size >= 2, `expected more than one category, got ${[...lanes].join(',')}`)
-})
-
-test('affinity lends a preference to tags the session never saw', () => {
-  // Judge only lamps, so `solid-wood` is never seen directly.
-  let s = P.createProductDeck(PRODUCTS, 1)
-  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'floor-lamp')) {
-    s = I.setVerdict(s, p.id, 'like')
-  }
-  const affinity = {
-    items: 48,
-    // Declare rattan a close neighbour of metal, though no product carries it.
-    neighbours: { 'm:rattan': [{ tag: 'm:metal', lift: 6 }] },
-    series: {},
-  }
-  const withStructure = P.recommend(
-    { ...s, pool: [...PRODUCTS, { ...PRODUCTS[0], id: 'wildcard', materials: ['rattan'], colours: [], categories: ['stool'], attributes: [] }] },
-    affinity,
-    40,
-  )
-  const wildcard = withStructure.find((r) => r.product.id === 'wildcard')
-  assert.ok(wildcard, 'a product tagged only with an inferred tag should still be scored')
-  assert.ok(wildcard.score > 0, 'inferred from a liked neighbour, it should score positively')
-  assert.ok(
-    wildcard.reasons.some((r) => !r.direct),
-    'the reason should be marked as inferred, not measured',
-  )
-})
-
-test('a liked series pulls its siblings up', () => {
-  let s = P.createProductDeck(PRODUCTS, 1)
-  // SERIESX is index 0 of every category. Like one, judge nothing else.
-  s = I.setVerdict(s, 'floor-lamp-0', 'like')
-  const picks = P.recommend(s, null, 40)
-  const sibling = picks.find((r) => r.product.id === 'pendant-0')
-  const other = picks.find((r) => r.product.id === 'pendant-1')
-  assert.ok(sibling && other, 'both pendants should be candidates')
-  assert.ok(
-    sibling.score > other.score,
-    'the SERIESX sibling should outrank an otherwise identical non-sibling',
-  )
+  assert.equal(P.unskip(s, 'sofa-3'), s, 'same object back — nothing to do')
+  assert.equal(P.unskipAll(s), s)
 })
 
 let failed = 0

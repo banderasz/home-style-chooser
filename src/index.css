@@ -1002,3 +1002,66 @@ code {
   font-variant-numeric: tabular-nums;
   flex: none;
 }
+
+/* Tag statistics: label, a bar showing the share you kept, then the raw counts. The
+   counts are not decoration — a 100% built on two swipes and one on forty look identical
+   without them, and only one of those is worth acting on. */
+.tagstats {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tagstat {
+  display: grid;
+  grid-template-columns: minmax(84px, 1.1fr) 2fr auto auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.tagstat__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagstat__track {
+  height: 7px;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tagstat__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+  border-radius: 999px;
+}
+
+.tagstat__count {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tagstat__pct {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 34px;
+  color: var(--accent);
+}
+
+/* A skipped product is a non-verdict, so it reads as neither kept nor rejected. */
+.gallery__item--skipped {
+  opacity: 0.55;
+  border-style: dashed;
+}

@@ -5,9 +5,16 @@ import InfiniteDeck from './components/InfiniteDeck'
 import History from './components/History'
 import Results from './components/Results'
 import ProductDeck from './components/ProductDeck'
+import ProductHistory from './components/ProductHistory'
 import ProductResults from './components/ProductResults'
-import { curatedProvider, voteIgnore, type HomeImage } from './data/images'
-import { ikeaProvider, loadAffinity } from './data/products'
+import {
+  clearLocalIgnored,
+  curatedProvider,
+  localIgnored,
+  voteIgnore,
+  type HomeImage,
+} from './data/images'
+import { ikeaProvider } from './data/products'
 import {
   answer as applyAnswer,
   createQuiz,
@@ -34,7 +41,12 @@ import {
   type InfiniteState,
   type SavedInfinite,
 } from './engine/infinite'
-import { createProductDeck, type Affinity, type ProductState } from './engine/products'
+import {
+  createProductDeck,
+  unskip as applyUnskip,
+  unskipAll as applyUnskipAll,
+  type ProductState,
+} from './engine/products'
 import { STYLES } from './data/taxonomy'
 import { MARKETS, type MarketId } from './data/product-taxonomy'
 
@@ -46,6 +58,7 @@ type Screen =
   | 'history'
   | 'endless-results'
   | 'shop'
+  | 'shop-history'
   | 'shop-results'
 
 const STORAGE_KEY = 'home-style-chooser/session/v1'
@@ -183,7 +196,7 @@ export default function App() {
   const [market, setMarket] = useState<MarketId>(readMarket)
   const [shop, setShop] = useState<ProductState | null>(null)
   const [shopError, setShopError] = useState<string | null>(null)
-  const [affinity, setAffinity] = useState<Affinity | null>(null)
+  const [ignoredCount, setIgnoredCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -193,6 +206,7 @@ export default function App() {
         if (cancelled) return
         setPool(images)
         setSaved(readSaved())
+        setIgnoredCount(localIgnored().size)
         // Built eagerly so the intro can show the running count, and so opening the mode
         // is instant rather than shuffling 3000 ids on the click.
         const savedEndless = readEndless()
@@ -239,8 +253,7 @@ export default function App() {
       }
       setScreen('shop')
       try {
-        const [all, structure] = await Promise.all([ikeaProvider.load(next), loadAffinity()])
-        setAffinity(structure)
+        const all = await ikeaProvider.load(next)
         // Adjectives the finished session actually liked. Both modes share the axis, so
         // "you liked wooden, curved, calm rooms" transfers straight onto objects.
         const source = quiz?.done ? quiz : endless?.answers.length ? endless : null
@@ -352,11 +365,34 @@ export default function App() {
     setShop((prev) => (prev ? applySkipCurrent(prev) : prev))
   }, [])
 
+  const onShopSetVerdict = useCallback((productId: string, verdict: Verdict | null) => {
+    setShop((prev) => (prev ? applySetVerdict(prev, productId, verdict) : prev))
+  }, [])
+
+  const onShopUnskip = useCallback((productId: string) => {
+    setShop((prev) => (prev ? applyUnskip(prev, productId) : prev))
+  }, [])
+
+  const onShopUnskipAll = useCallback(() => {
+    setShop((prev) => (prev ? applyUnskipAll(prev) : prev))
+  }, [])
+
   const resetShop = useCallback(() => {
     localStorage.removeItem(SHOP_KEY(market))
     setShop(null)
     void openShop(market)
   }, [market, openShop])
+
+  /**
+   * Un-hide every photo this browser ignored. The pool is filtered at load time, so this
+   * reloads rather than trying to splice photos back into a live session — a half-restored
+   * pool underneath an in-flight quiz would attach saved answers to the wrong cards.
+   */
+  const restoreIgnored = useCallback(() => {
+    clearLocalIgnored()
+    setIgnoredCount(0)
+    window.location.reload()
+  }, [])
 
   const restart = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
@@ -419,6 +455,8 @@ export default function App() {
           infiniteJudged={endless?.answers.length ?? 0}
           onShop={(next) => void openShop(next)}
           shopMarket={market}
+          ignoredCount={ignoredCount}
+          onRestoreIgnored={restoreIgnored}
         />
       )}
       {screen === 'quiz' && quiz && (
@@ -479,18 +517,29 @@ export default function App() {
             onJudge={onShopJudge}
             onUndo={onShopUndo}
             onSkip={onShopSkip}
+            onHistory={() => setScreen('shop-history')}
             onResults={() => setScreen('shop-results')}
             onExit={() => setScreen('intro')}
           />
         ) : (
           <div className="spinner" aria-label="Loading" />
         ))}
+      {screen === 'shop-history' && shop && (
+        <ProductHistory
+          state={shop}
+          onSetVerdict={onShopSetVerdict}
+          onUnskip={onShopUnskip}
+          onUnskipAll={onShopUnskipAll}
+          onBack={() => setScreen('shop')}
+          onReset={resetShop}
+        />
+      )}
       {screen === 'shop-results' && shop && (
         <ProductResults
           state={shop}
           market={market}
-          affinity={affinity}
           onKeepSwiping={() => setScreen('shop')}
+          onHistory={() => setScreen('shop-history')}
           onRestart={resetShop}
           onExit={() => setScreen('intro')}
         />

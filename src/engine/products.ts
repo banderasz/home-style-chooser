@@ -11,15 +11,18 @@
 // wooden ones" in either mode, and it doesn't, because it's the same function.
 
 import type { Product } from '../data/products'
-import { PRODUCT_ATTRIBUTE_IDS } from '../data/taxonomy'
+import { attributeLabel, PRODUCT_ATTRIBUTE_IDS } from '../data/taxonomy'
 import {
   COLOURS,
   MATERIALS,
   PRODUCT_CATEGORIES,
+  categoryLabel,
+  colourLabel,
+  materialLabel,
   type Colour,
 } from '../data/product-taxonomy'
 import { createInfinite, type InfiniteState } from './infinite'
-import { rankTags, type TagEvidence, type TagScore } from './quiz'
+import { rankTags, type TagEvidence, type TagScore, type Verdict } from './quiz'
 
 export type ProductState = InfiniteState<Product>
 
@@ -162,163 +165,113 @@ export function likedTotal(state: ProductState): { currency: string; amount: num
   return [...totals.entries()].map(([currency, amount]) => ({ currency, amount }))
 }
 
-// ---------------------------------------------------------------------------
-// Recommendation
-// ---------------------------------------------------------------------------
-
-export interface Affinity {
-  items: number
-  /** Namespaced tag -> tags it co-occurs with unusually often (or unusually rarely). */
-  neighbours: Record<string, { tag: string; lift: number }[]>
-  series: Record<string, string[]>
+export interface TagBreakdown {
+  tagId: string
+  label: string
+  seen: number
+  liked: number
+  /** Liked over seen. Raw, not smoothed — see `summary()`. */
+  rate: number
 }
 
-export interface Recommendation {
-  product: Product
-  score: number
-  /** The tags that earned it the score, strongest first — the "because you liked…" line. */
-  reasons: { tag: string; axis: ProductAxis; direct: boolean }[]
+export interface Summary {
+  judged: number
+  liked: number
+  skipped: number
+  likeRate: number
+  categories: TagBreakdown[]
+  colours: TagBreakdown[]
+  materials: TagBreakdown[]
+  attributes: TagBreakdown[]
 }
-
-const NS: Record<ProductAxis, string> = {
-  colours: 'c',
-  materials: 'm',
-  attributes: 'a',
-  categories: 'k',
-}
-
-/** A rate of 0.5 is "no opinion"; this converts one into a signed preference. */
-const preference = (score: TagScore) => (score.rate - 0.5) * score.confidence
 
 /**
- * What we believe about every tag, after a session. Tags the user actually saw get their
- * measured rate. Tags they never saw are *inferred* from the catalog's co-occurrence
- * structure: someone who liked rattan things has said something about jute, because in
- * this catalog those two travel together.
+ * A plain tally of what you saw and what you said yes to, per tag.
  *
- * Inference is deliberately damped by INFERRED_TRUST. A borrowed opinion should never
- * outrank a measured one, or the recommender starts confidently arguing with the user.
+ * Deliberately *not* the smoothed `rate` the scorers produce. Those exist to rank tags
+ * against each other, which needs a prior so that one lucky swipe can't top the table.
+ * This is a different job: reporting what actually happened. "4 of 5" should read as 80%,
+ * not as the 71% a Laplace prior would report, because here the counts are shown next to
+ * it and a number that disagrees with its own arithmetic just looks broken.
  */
-const INFERRED_TRUST = 0.45
+export function summary(state: ProductState): Summary {
+  const index = indexOf(state.pool)
 
-function beliefs(state: ProductState, affinity: Affinity | null) {
-  const direct = new Map<string, number>()
-  for (const axis of ['colours', 'materials', 'attributes', 'categories'] as ProductAxis[]) {
-    for (const score of scoreProductTags(state, axis)) {
-      if (score.seen > 0) direct.set(`${NS[axis]}:${score.tagId}`, preference(score))
-    }
-  }
-
-  const inferred = new Map<string, number>()
-  if (affinity) {
-    for (const [tag, list] of Object.entries(affinity.neighbours)) {
-      if (direct.has(tag)) continue
-      let weight = 0
-      let total = 0
-      for (const { tag: other, lift } of list) {
-        const known = direct.get(other)
-        if (known === undefined) continue
-        // A lift below 1 means the two repel, so the neighbour's opinion arrives
-        // inverted: disliking black is mild evidence *for* white.
-        const sign = lift >= 1 ? 1 : -1
-        const w = Math.abs(Math.log(lift))
-        total += w * sign * known
-        weight += w
+  const axis = (name: ProductAxis, label: (id: string) => string): TagBreakdown[] => {
+    const tally = new Map<string, { seen: number; liked: number }>()
+    for (const answer of state.answers) {
+      const product = index.get(answer.imageId)
+      if (!product) continue
+      for (const id of new Set(product[name] ?? [])) {
+        const entry = tally.get(id) ?? { seen: 0, liked: 0 }
+        entry.seen += 1
+        if (answer.verdict === 'like') entry.liked += 1
+        tally.set(id, entry)
       }
-      if (weight > 0) inferred.set(tag, (total / weight) * INFERRED_TRUST)
     }
+    return [...tally]
+      .map(([tagId, { seen, liked }]) => ({
+        tagId,
+        label: label(tagId),
+        seen,
+        liked,
+        rate: seen === 0 ? 0 : liked / seen,
+      }))
+      .sort((a, b) => b.seen - a.seen || b.rate - a.rate)
   }
 
-  return { direct, inferred }
+  const liked = state.answers.filter((a) => a.verdict === 'like').length
+  return {
+    judged: state.answers.length,
+    liked,
+    skipped: state.skipped.length,
+    likeRate: state.answers.length === 0 ? 0 : liked / state.answers.length,
+    categories: axis('categories', categoryLabel),
+    colours: axis('colours', colourLabel),
+    materials: axis('materials', materialLabel),
+    attributes: axis('attributes', attributeLabel),
+  }
 }
 
-/**
- * Rank products the session hasn't judged yet.
- *
- * `diversity` is not a nicety. Scoring alone returns the same beige oak thing thirty
- * times, because the tags that won are on all thirty — a list that is simultaneously
- * perfectly targeted and completely useless. Each result therefore discounts the tags
- * already spent by the results above it.
- */
-export function recommend(
+/** Everything judged or skipped, most recent first — the history screen's list. */
+export function productHistory(
   state: ProductState,
-  affinity: Affinity | null,
-  count = 12,
-  { diversity = 0.55 }: { diversity?: number } = {},
-): Recommendation[] {
-  const { direct, inferred } = beliefs(state, affinity)
-  if (direct.size === 0) return []
-
-  const judged = new Set([...state.answers.map((a) => a.imageId), ...state.skipped])
-  const likedSeries = new Set(
-    likedProducts(state).map((p) => p.name.split('/')[0].trim()).filter(Boolean),
-  )
-
-  const scored = state.pool
-    .filter((p) => !judged.has(p.id))
-    .map((product) => {
-      const reasons: Recommendation['reasons'] = []
-      let total = 0
-      let n = 0
-
-      for (const axis of ['colours', 'materials', 'attributes', 'categories'] as ProductAxis[]) {
-        for (const id of product[axis] ?? []) {
-          const key = `${NS[axis]}:${id}`
-          const value = direct.get(key) ?? inferred.get(key)
-          if (value === undefined) continue
-          total += value
-          n++
-          if (Math.abs(value) > 0.02)
-            reasons.push({ tag: id, axis, direct: direct.has(key) })
-        }
-      }
-      if (n === 0) return null
-
-      // Mean, not sum — otherwise a product with six tags beats a better one with three
-      // purely by being more thoroughly described.
-      let score = total / n
-      // Another thing from a series you already liked is a genuinely strong signal, and
-      // the one bit of cross-category transfer the catalog supports outright.
-      if (likedSeries.has(product.name.split('/')[0].trim())) score += 0.12
-
-      reasons.sort((a, b) => Number(b.direct) - Number(a.direct))
-      return { product, score, reasons: reasons.slice(0, 4) }
-    })
-    .filter((r): r is Recommendation => r !== null && r.score > 0)
-    .sort((a, b) => b.score - a.score)
-
-  // Greedy diverse selection over the top of the ranking. Repeating a category, a colour
-  // or a series costs the next candidate that shares it. The increment is large relative
-  // to typical score gaps on purpose: near the top of the ranking, dozens of products are
-  // separated by hundredths, and a timid penalty just reorders three picture frames.
-  const REPEAT_COST = 0.12
-
-  const facets = (r: Recommendation) => [
-    `k:${r.product.categories[0]}`,
-    `s:${r.product.name.split('/')[0].trim()}`,
-    ...r.product.colours.map((c) => `c:${c}`),
-  ]
-
-  const out: Recommendation[] = []
-  const spent = new Map<string, number>()
-  const pool = scored.slice(0, Math.max(count * 20, 200))
-
-  while (out.length < count && pool.length > 0) {
-    let bestAt = 0
-    let bestValue = -Infinity
-    for (let i = 0; i < pool.length; i++) {
-      const penalty = facets(pool[i]).reduce((sum, k) => sum + (spent.get(k) ?? 0), 0)
-      const value = pool[i].score - diversity * penalty
-      if (value > bestValue) {
-        bestValue = value
-        bestAt = i
-      }
-    }
-    const [picked] = pool.splice(bestAt, 1)
-    out.push(picked)
-    for (const k of facets(picked)) spent.set(k, (spent.get(k) ?? 0) + REPEAT_COST)
+): { product: Product; verdict: Verdict | 'skipped' }[] {
+  const index = indexOf(state.pool)
+  const out: { product: Product; verdict: Verdict | 'skipped' }[] = []
+  for (let i = state.answers.length - 1; i >= 0; i--) {
+    const product = index.get(state.answers[i].imageId)
+    if (product) out.push({ product, verdict: state.answers[i].verdict })
+  }
+  // Skips carry no timestamp, so they sit after the judged ones rather than pretending
+  // to a position in the order.
+  for (let i = state.skipped.length - 1; i >= 0; i--) {
+    const product = index.get(state.skipped[i])
+    if (product) out.push({ product, verdict: 'skipped' })
   }
   return out
+}
+
+/** Put a skipped product back in the deck, unjudged. */
+export function unskip(state: ProductState, productId: string): ProductState {
+  if (!state.skipped.includes(productId)) return state
+  const skipped = state.skipped.filter((id) => id !== productId)
+  const back = state.queue.indexOf(productId)
+  return {
+    ...state,
+    skipped,
+    cursor: back === -1 ? state.cursor : Math.min(state.cursor, back),
+  }
+}
+
+/** Put every skipped product back at once. */
+export function unskipAll(state: ProductState): ProductState {
+  if (state.skipped.length === 0) return state
+  const earliest = state.skipped.reduce((min, id) => {
+    const at = state.queue.indexOf(id)
+    return at === -1 ? min : Math.min(min, at)
+  }, state.cursor)
+  return { ...state, skipped: [], cursor: earliest }
 }
 
 /**

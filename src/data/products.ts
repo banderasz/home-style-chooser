@@ -55,24 +55,6 @@ interface ProductFile {
   products: Product[]
 }
 
-/**
- * The catalog's co-occurrence structure, written by `npm run analyse-products`.
- *
- * Optional on purpose. It is a derived file, and a recommender that can only work once
- * an analysis step has been run is a recommender that silently does nothing when someone
- * forgets. Without it, recommendations fall back to directly-measured tags only — worse,
- * but never broken.
- */
-export async function loadAffinity(): Promise<import('../engine/products').Affinity | null> {
-  try {
-    const mod = await import('./affinity.json')
-    const file = (mod as { default?: unknown }).default ?? mod
-    return file as import('../engine/products').Affinity
-  } catch {
-    return null
-  }
-}
-
 export const ikeaProvider: ProductProvider = {
   name: 'ikea',
   async load(market?: string) {

@@ -12,6 +12,9 @@ interface Props {
   onShop: (market: 'at' | 'hu') => void
   /** The market the last product session used, so the button offers that one first. */
   shopMarket: 'at' | 'hu'
+  /** Photos this browser has hidden with the Ignore button. */
+  ignoredCount: number
+  onRestoreIgnored: () => void
 }
 
 export default function Intro({
@@ -25,6 +28,8 @@ export default function Intro({
   infiniteJudged,
   onShop,
   shopMarket,
+  ignoredCount,
+  onRestoreIgnored,
 }: Props) {
   const other = shopMarket === 'at' ? 'hu' : 'at'
   const label = { at: 'Austria', hu: 'Hungary' } as const
@@ -103,6 +108,17 @@ export default function Intro({
       <p className="intro__note">
         {imageCount} photos from Pexels and Openverse, all free to use. Credits are on every
         card.
+        {ignoredCount > 0 && (
+          <>
+            {' '}
+            {ignoredCount} {ignoredCount === 1 ? 'is' : 'are'} hidden because you ignored{' '}
+            {ignoredCount === 1 ? 'it' : 'them'} —{' '}
+            <button type="button" className="linkish" onClick={onRestoreIgnored}>
+              bring {ignoredCount === 1 ? 'it' : 'them'} back
+            </button>
+            .
+          </>
+        )}
       </p>
     </section>
   )

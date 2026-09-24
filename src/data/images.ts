@@ -48,6 +48,22 @@ export function localIgnored(): Set<string> {
   }
 }
 
+/**
+ * Un-hide everything this browser flagged.
+ *
+ * The Ignore button has two effects and only one of them is reversible from here: the
+ * local list below, which hides a photo for you immediately, and a vote towards retiring
+ * it for everyone. Clearing the local list is the useful half — a photo you ignored by
+ * accident, or changed your mind about, comes straight back.
+ */
+export function clearLocalIgnored() {
+  try {
+    localStorage.removeItem(LOCAL_IGNORE_KEY)
+  } catch {
+    // Private mode — there was nothing stored to clear.
+  }
+}
+
 export function rememberIgnored(id: string) {
   try {
     const all = localIgnored()

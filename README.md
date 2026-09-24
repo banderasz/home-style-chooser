@@ -6,8 +6,8 @@ one codebase — a responsive PWA you can install on a phone home screen.
 
 Three modes: the **two-round quiz** (three minutes, ranks 23 styles), **endless mode**
 (swipe the whole photo catalog across as many sittings as you like), and **shopping mode**
-(swipe real IKEA products for Austria or Hungary, end with a priced shortlist and
-recommendations).
+(swipe real IKEA products for Austria or Hungary, end with a priced shortlist and a
+breakdown of what you said yes to).
 
 ## How it works
 
@@ -87,8 +87,7 @@ Other scripts:
 | `npm run prune`           | Drop greyscale, non-room and Ignore-flagged photos       |
 | `npm run verify-catalog`  | Drop catalog entries whose URL no longer resolves        |
 | `npm run harvest-products`| Build the IKEA product catalog (AT + HU, no API key)    |
-| `npm run analyse-products`| Derive the tag co-occurrence used for recommendations   |
-| `npm test`                | 55 assertions over the engines and the lexicon            |
+| `npm test`                | 56 assertions over the engines and the lexicon            |
 | `npm run typecheck`       | `tsc --noEmit`                                           |
 | `npm run build`           | Typecheck + production build to `dist/`                  |
 
@@ -335,7 +334,6 @@ be exempted from both, and the exemptions would outnumber the shared code.
 
 ```bash
 npm run harvest-products    # build src/data/products.json  (~20 min, no API key)
-npm run analyse-products    # derive src/data/affinity.json from it
 ```
 
 ### Where the data comes from
@@ -404,39 +402,37 @@ restatement of the other two axes, and the catalog's "strongest correlations" ca
 ceramic↔stone and black↔monochrome — one signal counted twice, which a recommender reads
 as corroboration. Adjectives now add information or they stay empty.
 
-## Recommendations
+## What the shopping result screen shows
 
-`npm run analyse-products` measures which tags actually co-occur, by lift:
+No recommendations. An earlier version scored unseen products from what you'd liked and
+showed a "recommended for you" list, plus a live *leaning beige solid wood* readout in the
+deck header. Both were removed: the header changed on almost every swipe, so it was noise
+pretending to be insight, and a recommender is the app making up its mind about you when
+the thing you actually want is to see what you decided.
+
+What replaced them is a plain tally. Four tables — colours, materials, categories,
+adjectives — each a row per tag with a bar and the raw counts:
 
 ```
-lift(a, b) = P(a and b) / (P(a) * P(b))
+Beige     ████████████░░░░   14/18   78%
+Black     ███░░░░░░░░░░░░░    2/11   18%
 ```
 
-1.0 means unrelated; above 1 they attract, below 1 they repel. Both are useful — "you
-liked white, so probably not the black one" is as good a recommendation as its opposite.
-Pairs seen fewer than 20 times are dropped as coincidence. The result is written to
-`src/data/affinity.json` as a handful of neighbours per tag.
+Two deliberate choices in there. The rate is `liked / seen` exactly, **not** the
+Laplace-smoothed rate the scorers use — those exist to rank tags against each other and
+need a prior so one lucky swipe can't top the table, but this is reporting what happened,
+and a percentage that disagrees with the counts printed next to it just looks broken.
+And rows sort by `seen`, not by rate, so a tag you saw twice at 100% doesn't outrank one
+you saw forty times at 70%. The counts are on screen precisely so you can tell those apart.
 
-`recommend()` in `src/engine/products.ts` uses it for three things:
+The **History** screen is the other half: every product you judged, plus every one you
+skipped. Tapping cycles saved → not for me → unjudged, same as the photo history. Skipped
+products show with a `↺` and tapping one puts it straight back in the deck; there's a
+*restore all* link too. A skip was never evidence, so restoring one doesn't invent a
+verdict for it.
 
-- **Measured belief.** Every tag the session actually saw gets `(rate - 0.5) * confidence`
-  from the same Laplace-smoothed scorer the quiz uses.
-- **Inferred belief.** Tags never seen are estimated from their neighbours, damped to 45%.
-  Someone who liked rattan has said something about jute. A borrowed opinion must never
-  outrank a measured one, or the recommender starts arguing with the user.
-- **Series.** IKEA's product name *is* its design family, and 80-odd series span more than
-  one category (STOCKHOLM 2025 covers sofa, armchair, dining chair, stool, bench and coffee
-  table). Liking one member lifts the rest — the one piece of genuine cross-category
-  transfer the catalog supports outright.
-
-Products are scored by the *mean* of their tags' beliefs, not the sum, so a thoroughly
-described product doesn't beat a better-matched sparse one. Selection is then greedy with
-a diversity penalty: without it the list is the same beige oak thing nine times, which is
-simultaneously perfectly targeted and completely useless. Each result carries the tags
-that earned it, so the UI can say *because you liked oak, beige*.
-
-The affinity file is optional — if it's missing, recommendations fall back to directly
-measured tags. Worse, but never broken.
+Photos ignored in the quiz and endless modes can be brought back as well — the intro
+screen offers it when this browser has hidden any.
 
 ## Interaction
 
