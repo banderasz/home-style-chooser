@@ -14,23 +14,22 @@
 //
 // Three passes, in this order:
 //
-//   1. Reference pass (gb/en). Reads the COLOR and MATERIAL facets and the English
-//      descriptive text. Colour and material are properties of the *product*, not of the
-//      market, so doing this once instead of once per market cuts the run by two thirds.
-//      English also means the existing caption lexicon in attributes.mjs works unchanged
-//      — no German or Hungarian word list to write and maintain.
-//   2. Market pass (at/de, hu/hu). Price, link and localised name. Joined to the
-//      reference pass on `itemNoGlobal`, which is the same number in every market.
-//   3. Text fallback. Products the reference pass never saw (regional ranges differ)
-//      get colour and material parsed from their own design text instead. Lower recall,
-//      but better than an untagged card.
+//   1. Reference pass (gb/en), once per category. Supplies the English descriptive text,
+//      which lets the existing caption lexicon in attributes.mjs tag adjectives with no
+//      German or Hungarian word list to maintain. Also the English colour name, which is
+//      the variant's own ("Kilanda light beige") rather than the range's.
+//   2. Market pass (at/de, hu/hu). Price, link, localised name — and the MATERIAL facet,
+//      queried per value in that market. Joined to the reference pass on `itemNoGlobal`,
+//      which is the same number everywhere.
+//   3. Text fallback. Anything the passes above missed is parsed from the product's own
+//      design text. Lower recall, but better than an untagged card.
 //
 // Resumable in the same way as harvest.mjs: results flush after every query and
 // completed query keys are recorded, so an interrupted run just gets re-run.
 
 import { writeFile, readFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   PRODUCT_CATEGORIES,
   MATERIALS,
@@ -38,7 +37,6 @@ import {
   MARKETS,
   REFERENCE_MARKET,
   IKEA_MATERIAL_BY_ID,
-  IKEA_COLOUR_BY_ID,
 } from './product-taxonomy.mjs'
 import { attributeMatchers, tagsFor } from './attributes.mjs'
 
@@ -238,15 +236,6 @@ function tagsFromText(text, table, { local = false } = {}) {
 }
 
 /**
- * Facet colours are family-level, so a product sold in six colourways comes back as all
- * six while the card shows one of them. Two is a real product ("beige/grey"); six is the
- * facet telling us about a range, which is worse than no colour at all on a screen whose
- * entire job is "do you like the look of this". Above the cut we take none.
- */
-const FACET_COLOUR_CUT = 2
-const usableFacetColours = (set) => (set.size > 0 && set.size <= FACET_COLOUR_CUT ? [...set] : [])
-
-/**
  * Adjectives that can only describe a room, which the lexicon nonetheless finds in
  * product copy — a mirror's alt text mentions a view, a lamp's mentions warm light. They
  * are about the photograph, not the thing, so they never reach a product record. Mirrors
@@ -281,9 +270,6 @@ async function referencePass(category, matchers, log) {
     byItem.set(p.itemNoGlobal, {
       // The variant's own colour, in English. This is the good one — see COLOURS.
       colours: new Set(tagsFromText(p.validDesignText, COLOURS)),
-      // Family-level colours from the facet pass. Only used when the line above is empty.
-      familyColours: new Set(),
-      materials: new Set(),
       attributes: tagsFor(describe(p), matchers),
       filterClass: p.filterClass ?? null,
       text: describe(p),
@@ -299,38 +285,49 @@ async function referencePass(category, matchers, log) {
     log(`  ! "${category.q.en}" drifted: expected ${category.expect.join('/')}, got ${seen}`)
   }
 
-  if (!NO_FACETS) {
-    for (const [facetId, param, lookup, field] of [
-      ['COLOR', 'f-colors', IKEA_COLOUR_BY_ID, 'familyColours'],
-      ['MATERIAL', 'f-materials', IKEA_MATERIAL_BY_ID, 'materials'],
-    ]) {
-      for (const value of facetValues(base.filters, facetId)) {
-        const ours = lookup.get(String(value.id))
-        if (!ours) continue // an IKEA facet value we chose not to model
-        const hit = await search(REFERENCE_MARKET.path, category.q.en, {
-          filters: { [param]: String(value.id) },
-        })
-        for (const p of hit.items) byItem.get(p.itemNoGlobal)?.[field].add(ours)
-        await sleep(DELAY)
-      }
-    }
-  }
-
-  for (const entry of byItem.values()) {
-    if (entry.colours.size === 0) for (const c of usableFacetColours(entry.familyColours)) entry.colours.add(c)
-    // Material is the other way round: the facet is per-family but materials barely vary
-    // between variants of the same product, and the alt text genuinely describes them
-    // ("wooden legs", "solid pine frame"). So text is a fair backstop here.
-    if (entry.materials.size === 0) for (const m of tagsFromText(entry.text, MATERIALS)) entry.materials.add(m)
-  }
-
   return { byItem, total: base.total }
 }
 
+/**
+ * Which products in this market carry which material, read from the market's own
+ * MATERIAL facet.
+ *
+ * This used to run against gb/en and join by item number, on the reasoning that material
+ * is a property of the product rather than the market. True in principle, useless in
+ * practice: Austria and Hungary stock different fabric variants, so most of the join
+ * missed, and the fallback saw design texts like "Knisa dark grey" — a fabric *name*,
+ * matching no material word. Sofas came out 32% tagged while the facet itself had
+ * Fabric 82, Leather 33, Coated fabric 32, Velvet 20 sitting right there.
+ *
+ * So it asks each market directly. Costs one query per material value per category per
+ * market; the facet ids are market-independent even though their labels are not.
+ */
+async function materialPass(market, category, filters) {
+  const byItem = new Map()
+  if (NO_FACETS) return byItem
+
+  for (const value of facetValues(filters, 'MATERIAL')) {
+    const ours = IKEA_MATERIAL_BY_ID.get(String(value.id))
+    if (!ours) continue // an IKEA facet value we chose not to model
+    const hit = await search(market.path, category.q[market.lang], {
+      filters: { 'f-materials': String(value.id) },
+    })
+    for (const p of hit.items) {
+      if (!p.itemNoGlobal) continue
+      if (!byItem.has(p.itemNoGlobal)) byItem.set(p.itemNoGlobal, new Set())
+      byItem.get(p.itemNoGlobal).add(ours)
+    }
+    await sleep(DELAY)
+  }
+  return byItem
+}
+
 /** One market, one category. Returns catalog-shaped entries. */
-async function marketPass(market, category, reference, matchers) {
-  const { items, total } = await search(market.path, category.q[market.lang])
+async function marketPass(market, category, reference) {
+  const { items, total, filters } = await search(market.path, category.q[market.lang])
   await sleep(DELAY)
+
+  const materialsByItem = await materialPass(market, category, filters)
 
   const out = []
   for (const p of items) {
@@ -338,15 +335,18 @@ async function marketPass(market, category, reference, matchers) {
     if (!image || !p.pipUrl || !p.itemNoGlobal) continue
 
     const ref = reference.byItem.get(p.itemNoGlobal)
-    // Products outside the GB range still name their own colour, in German or Hungarian.
     // Only the design text is read for colour: the alt text describes the whole staged
     // room, so "two beige chairs, grey rug, black side table" tags a beige chair three
-    // colours. Materials can read the wider text — see referencePass.
+    // colours. English first where the reference pass saw it, else the local wording.
     const colours = ref?.colours.size
       ? [...ref.colours]
       : tagsFromText(p.validDesignText, COLOURS, { local: true })
-    const materials = ref?.materials.size
-      ? [...ref.materials]
+
+    // Facet first — it is the retailer asserting the fact. Text is the backstop for
+    // products the facet queries didn't reach.
+    const facetMaterials = materialsByItem.get(p.itemNoGlobal)
+    const materials = facetMaterials?.size
+      ? [...facetMaterials]
       : tagsFromText(describe(p), MATERIALS, { local: true })
 
     // The adjective axis is deliberately English-only. A product missing from the
@@ -357,8 +357,8 @@ async function marketPass(market, category, reference, matchers) {
     // the adjective each material and colour implies (rattan -> `rattan`, green ->
     // `greenery`) so that every tagged product had adjectives. That turned out to be
     // self-defeating: it made the adjective axis 70% a restatement of the other two, so
-    // the catalog's strongest "correlations" were things like ceramic↔stone and
-    // black↔monochrome — one signal counted twice, which a recommender would read as
+    // the catalog's strongest "correlations" were things like ceramic/stone and
+    // black/monochrome — one signal counted twice, which a recommender would read as
     // corroboration. Adjectives now add information or they stay empty.
     const attributes = (ref ? ref.attributes : []).filter((a) => !ROOM_ONLY.has(a))
 
@@ -382,6 +382,31 @@ async function marketPass(market, category, reference, matchers) {
     })
   }
   return { out, total }
+}
+
+/**
+ * Fold a product found by a second query into the one already recorded.
+ *
+ * Categories genuinely overlap — Hungarian "kisasztal" (side table) returns most of what
+ * "dohányzóasztal" (coffee table) does, and a shoe cabinet is also a base cabinet. An
+ * earlier version just overwrote by id, so whichever query ran last won and the first
+ * category silently lost nearly all its products: HU coffee tables came out at 2 when the
+ * query itself returns 96. A product that is two things should be tagged as both, which
+ * is also what the scorer expects — it splits category evidence 1/k.
+ *
+ * Everything else takes the first non-empty value. The passes agree on price and image
+ * for a given market, so there is nothing to reconcile there.
+ */
+function merge(existing, fresh) {
+  if (!existing) return fresh
+  const union = (a, b) => [...new Set([...(a ?? []), ...(b ?? [])])]
+  return {
+    ...existing,
+    categories: union(existing.categories, fresh.categories),
+    materials: union(existing.materials, fresh.materials),
+    colours: union(existing.colours, fresh.colours),
+    attributes: union(existing.attributes, fresh.attributes),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -452,7 +477,7 @@ async function main() {
 
     for (const market of pending) {
       const { out, total } = await marketPass(market, category, reference, matchers)
-      for (const entry of out) byId.set(entry.id, entry)
+      for (const entry of out) byId.set(entry.id, merge(byId.get(entry.id), entry))
       completed.add(`${category.id}|${market.id}`)
       log(
         `${category.id.padEnd(14)} ${market.id}  ${String(out.length).padStart(3)} kept` +
@@ -479,7 +504,13 @@ async function main() {
   if (thin.length) log(`  thin categories: ${thin.map(([id, n]) => `${id}(${n})`).join(', ')}`)
 }
 
-main().catch((err) => {
-  process.stderr.write(`${err.stack ?? err}\n`)
-  process.exit(1)
-})
+// Only harvest when run as a script. Exported so the merge rule above — the one that
+// silently cost a whole category last time it was wrong — can be asserted in the tests.
+export { merge }
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    process.stderr.write(`${err.stack ?? err}\n`)
+    process.exit(1)
+  })
+}

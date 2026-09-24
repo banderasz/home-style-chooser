@@ -45,7 +45,14 @@ async function loadEngine() {
   const mod = await import(pathToFileURL(join(dir, 'quiz.mjs')).href)
   const infinite = await import(pathToFileURL(join(dir, 'infinite.mjs')).href)
   const products = await import(pathToFileURL(join(dir, 'products.mjs')).href)
-  return { mod, infinite, products, cleanup: () => rm(dir, { recursive: true, force: true }) }
+  const taxonomy = await import(pathToFileURL(join(dir, 'product-taxonomy.mjs')).href)
+  return {
+    mod,
+    infinite,
+    products,
+    taxonomy,
+    cleanup: () => rm(dir, { recursive: true, force: true }),
+  }
 }
 
 function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
@@ -75,7 +82,7 @@ function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
 const tests = []
 const test = (name, fn) => tests.push([name, fn])
 
-const { mod: E, infinite: I, products: P, cleanup } = await loadEngine()
+const { mod: E, infinite: I, products: P, taxonomy: T, cleanup } = await loadEngine()
 const { STYLES } = await import(
   pathToFileURL(join(ROOT, 'scripts', 'taxonomy.mjs')).href
 )
@@ -342,6 +349,93 @@ test('style ids match between the harvest taxonomy and the app taxonomy', async 
   )
   const appIds = [...stylesBlock.matchAll(/id: '([a-z0-9]+)',/g)].map((m) => m[1])
   assert.deepEqual([...appIds].sort(), [...STYLE_IDS].sort())
+})
+
+test('the product taxonomy ids match between the harvester and the app', async () => {
+  // Two hand-maintained copies of the same ids is exactly the thing that silently drifts:
+  // rename a material in one and the app renders a raw id, or the harvester writes tags
+  // nothing scores. Compare the real modules, not a regex over the source.
+  const harvest = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'product-taxonomy.mjs')).href
+  )
+  const ids = (list) => list.map((x) => x.id).sort()
+
+  assert.deepEqual(
+    ids(harvest.PRODUCT_CATEGORIES),
+    ids(T.PRODUCT_CATEGORIES),
+    'category ids differ',
+  )
+  assert.deepEqual(ids(harvest.MATERIALS), ids(T.MATERIALS), 'material ids differ')
+  assert.deepEqual(ids(harvest.COLOURS), ids(T.COLOURS), 'colour ids differ')
+
+  // Groups drive the picker's layout, so a typo there quietly creates a new section.
+  const groups = (list) => [...new Set(list.map((c) => c.group))].sort()
+  assert.deepEqual(groups(harvest.PRODUCT_CATEGORIES), groups(T.PRODUCT_CATEGORIES))
+})
+
+test('every material and colour maps to an adjective the app can score', () => {
+  const known = new Set(ATTRIBUTES.map((a) => a.id))
+  for (const m of T.MATERIALS) {
+    assert.ok(known.has(m.attribute), `material ${m.id} -> unknown adjective ${m.attribute}`)
+  }
+  for (const c of T.COLOURS) {
+    assert.ok(known.has(c.attribute), `colour ${c.id} -> unknown adjective ${c.attribute}`)
+  }
+})
+
+test('no IKEA facet id is claimed by two materials or two colours', async () => {
+  const harvest = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'product-taxonomy.mjs')).href
+  )
+  for (const [name, list] of [
+    ['material', harvest.MATERIALS],
+    ['colour', harvest.COLOURS],
+  ]) {
+    const seen = new Map()
+    for (const entry of list) {
+      for (const id of entry.ikeaIds) {
+        assert.ok(
+          !seen.has(id),
+          `IKEA ${name} facet ${id} is claimed by both ${seen.get(id)} and ${entry.id}`,
+        )
+        seen.set(id, entry.id)
+      }
+    }
+  }
+})
+
+test('a product found by two category queries keeps both categories', async () => {
+  // The regression this guards: the harvester keyed the catalog by product id and simply
+  // overwrote, so when Hungarian "kisasztal" (side table) returned most of what
+  // "dohányzóasztal" (coffee table) had already returned, the later query won and coffee
+  // tables came out at 2 products when the query itself yields 96.
+  const { merge } = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'harvest-products.mjs')).href
+  )
+  const first = {
+    id: 'ikea-hu-123',
+    categories: ['coffee-table'],
+    materials: ['solid-wood'],
+    colours: ['brown'],
+    attributes: ['modern'],
+    price: { amount: 49, currency: 'HUF' },
+  }
+  const second = {
+    ...first,
+    categories: ['side-table'],
+    materials: ['metal'],
+    colours: ['brown'],
+    attributes: [],
+  }
+
+  const merged = merge(first, second)
+  assert.deepEqual(merged.categories.sort(), ['coffee-table', 'side-table'])
+  assert.deepEqual(merged.materials.sort(), ['metal', 'solid-wood'])
+  assert.deepEqual(merged.colours, ['brown'], 'duplicates collapse')
+  assert.deepEqual(merged.attributes, ['modern'], 'the earlier pass keeps its adjectives')
+  assert.deepEqual(merged.price, first.price, 'scalar fields are untouched')
+
+  assert.equal(merge(undefined, second), second, 'the first sighting passes straight through')
 })
 
 test('the lexicon matches whole words only', () => {

@@ -353,13 +353,22 @@ alike), plus per-product price, rating, a white-background cutout, and usually a
 
 The harvest runs in three passes:
 
-1. **Reference (`gb/en`).** Reads the facets and the English description. Colour and
-   material are properties of the product, not the market, so doing this once rather than
-   per-market cuts the run by two thirds. English also means the existing caption lexicon
-   in `scripts/attributes.mjs` works unchanged — no German or Hungarian word list.
-2. **Market (`at/de`, `hu/hu`).** Price, link, localised name. Joined to the reference pass
-   on `itemNoGlobal`, which is the same number in every market.
-3. **Text fallback.** Products outside the GB range parse their own design text instead.
+1. **Reference (`gb/en`).** The English description, which lets the existing caption
+   lexicon in `scripts/attributes.mjs` tag adjectives with no German or Hungarian word list
+   to maintain — plus the English colour name, which describes the variant rather than the
+   range.
+2. **Market (`at/de`, `hu/hu`).** Price, link, localised name, and the `MATERIAL` facet
+   queried per value *in that market*. Joined to the reference pass on `itemNoGlobal`.
+3. **Text fallback.** Anything the passes above missed is parsed from the product's own
+   design text.
+
+The material facet used to run against `gb/en` too, on the reasoning that what a sofa is
+made of doesn't depend on which country sells it. True in principle and useless in
+practice: Austria and Hungary stock different fabric variants, so most of the join missed
+and the fallback read design texts like `"Knisa dark grey"` — a fabric *name*, matching no
+material word. Sofas came out **32% tagged** while the facet itself had `Fabric 82,
+Leather 33, Coated fabric 32, Velvet 20` sitting right there. Asking each market directly
+took it to **85%**.
 
 ### What a product ends up tagged with
 
@@ -367,10 +376,23 @@ Four axes. Three of them are read off the retailer rather than guessed:
 
 | Axis | Coverage | Source |
 | --- | --- | --- |
-| category (31 values) | 100% | the search query that found it |
+| category (46 values) | 100% | the search query that found it |
 | colour (12) | ~87% | the variant's own design text |
-| material (14) | ~59% | IKEA's `MATERIAL` facet, queried per value |
+| material (15) | ~85% | IKEA's `MATERIAL` facet, queried per value per market |
 | adjectives | ~30% | the product's English alt text, through the room lexicon |
+
+Ten groups: Seating, Tables, Storage, Beds, Lighting, Soft furnishing, Decor, Kitchen,
+Bathroom, Outdoor.
+
+**Kitchen carries fronts, taps, handles and trolleys — not carcasses.** `base cabinets`
+and `wall cabinets` are ~1,850 products in Austria alone with no context photography, and
+every card would read `METOD Base cabinet, white`. IKEA models a kitchen as frame plus
+front, and only the front carries the look.
+
+Two material distinctions exist because they are most of a sofa decision: `leather` and
+`faux-leather` are separate (IKEA's "Coated fabric" was folded into leather, which
+flattered it), and the catch-all `fabric` is no longer misfiled as "synthetic textile" —
+plenty of it is cotton.
 
 There is **no style axis on products**, and that is a finding rather than an omission.
 Style is the one thing IKEA doesn't expose, so the alternative was to derive it. A rules

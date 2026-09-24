@@ -31,6 +31,8 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   { id: 'dining-chair', label: 'Dining chair', group: 'Seating' },
   { id: 'stool', label: 'Stool', group: 'Seating' },
   { id: 'bench', label: 'Bench', group: 'Seating' },
+  { id: 'office-chair', label: 'Desk chair', group: 'Seating' },
+  { id: 'bar-stool', label: 'Bar stool', group: 'Seating' },
 
   { id: 'coffee-table', label: 'Coffee table', group: 'Tables' },
   { id: 'side-table', label: 'Side table', group: 'Tables' },
@@ -43,6 +45,9 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   { id: 'drawers', label: 'Chest of drawers', group: 'Storage' },
   { id: 'sideboard', label: 'Sideboard', group: 'Storage' },
   { id: 'media-unit', label: 'TV unit', group: 'Storage' },
+  { id: 'shoe-cabinet', label: 'Shoe cabinet', group: 'Storage' },
+  { id: 'storage-box', label: 'Storage box', group: 'Storage' },
+  { id: 'basket', label: 'Basket', group: 'Storage' },
 
   { id: 'bed', label: 'Bed', group: 'Beds' },
 
@@ -63,6 +68,19 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   { id: 'frame', label: 'Picture frame', group: 'Decor' },
   { id: 'plant-pot', label: 'Plant pot', group: 'Decor' },
   { id: 'candle-holder', label: 'Candle holder', group: 'Decor' },
+  { id: 'clock', label: 'Clock', group: 'Decor' },
+  { id: 'coat-rack', label: 'Coat rack', group: 'Decor' },
+
+  { id: 'kitchen-front', label: 'Kitchen front', group: 'Kitchen' },
+  { id: 'kitchen-tap', label: 'Tap', group: 'Kitchen' },
+  { id: 'handle', label: 'Handles & knobs', group: 'Kitchen' },
+  { id: 'kitchen-trolley', label: 'Kitchen trolley', group: 'Kitchen' },
+
+  { id: 'bathroom-cabinet', label: 'Bathroom cabinet', group: 'Bathroom' },
+  { id: 'washbasin', label: 'Washbasin', group: 'Bathroom' },
+
+  { id: 'outdoor-chair', label: 'Garden chair', group: 'Outdoor' },
+  { id: 'outdoor-table', label: 'Garden table', group: 'Outdoor' },
 ]
 
 export const MATERIALS: Material[] = [
@@ -74,10 +92,11 @@ export const MATERIALS: Material[] = [
   { id: 'ceramic', label: 'Ceramic', attribute: 'stone' },
   { id: 'rattan', label: 'Rattan & woven', attribute: 'rattan' },
   { id: 'leather', label: 'Leather', attribute: 'leather' },
+  { id: 'faux-leather', label: 'Faux leather', attribute: 'leather' },
   { id: 'velvet', label: 'Velvet', attribute: 'luxurious' },
   { id: 'wool', label: 'Wool & sheepskin', attribute: 'textile' },
   { id: 'linen-cotton', label: 'Linen & cotton', attribute: 'textile' },
-  { id: 'synthetic-textile', label: 'Synthetic textile', attribute: 'textile' },
+  { id: 'fabric', label: 'Fabric', attribute: 'textile' },
   { id: 'plastic', label: 'Plastic', attribute: 'sleek' },
   { id: 'paper', label: 'Paper', attribute: 'minimal' },
 ]

@@ -14,7 +14,7 @@
 // numeric ids that are identical in every market (`10003` is beige in at/de, hu/hu and
 // gb/en alike), so the harvester reads them off the retailer rather than guessing from a
 // product name. `ikeaIds` below is that mapping, collapsing IKEA's 61 material values
-// into the 14 a person would actually recognise as different.
+// into the 15 a person would actually recognise as different.
 
 /**
  * Query terms per market. The search query is what determines a product's category —
@@ -36,6 +36,10 @@ export const PRODUCT_CATEGORIES = [
     q: { en: 'stool', de: 'Hocker', hu: 'zsámoly' }, expect: ['stools', 'footstools', 'chairs'] },
   { id: 'bench', label: 'Bench', group: 'Seating',
     q: { en: 'bench', de: 'Sitzbank', hu: 'pad' }, expect: ['benches'] },
+  { id: 'office-chair', label: 'Desk chair', group: 'Seating',
+    q: { en: 'office chair', de: 'Schreibtischstuhl', hu: 'forgószék' }, expect: ['chairs'] },
+  { id: 'bar-stool', label: 'Bar stool', group: 'Seating',
+    q: { en: 'bar stool', de: 'Barhocker', hu: 'bárszék' }, expect: ['chairs', 'stools'] },
 
   // --- Tables
   { id: 'coffee-table', label: 'Coffee table', group: 'Tables',
@@ -63,6 +67,15 @@ export const PRODUCT_CATEGORIES = [
     expect: ['base cabinets', 'storage combinations', 'bookcases and display cabinets'] },
   { id: 'media-unit', label: 'TV unit', group: 'Storage',
     q: { en: 'tv bench', de: 'TV-Bank', hu: 'tv-állvány' }, expect: ['media furniture'] },
+  { id: 'shoe-cabinet', label: 'Shoe cabinet', group: 'Storage',
+    q: { en: 'shoe cabinet', de: 'Schuhschrank', hu: 'cipősszekrény' },
+    expect: ['base cabinets', 'clothes and shoe racks', 'high cabinets'] },
+  { id: 'storage-box', label: 'Storage box', group: 'Storage',
+    // "Aufbewahrungsbox" returns 3412 — the term is too loose and drags in every
+    // container IKEA sells. "Box" is narrower and returns the actual lidded boxes.
+    q: { en: 'storage box', de: 'Box', hu: 'doboz tetővel' }, expect: ['boxes or baskets'] },
+  { id: 'basket', label: 'Basket', group: 'Storage',
+    q: { en: 'basket', de: 'Korb', hu: 'kosár' }, expect: ['boxes or baskets'] },
 
   // --- Beds
   { id: 'bed', label: 'Bed', group: 'Beds',
@@ -106,6 +119,40 @@ export const PRODUCT_CATEGORIES = [
     q: { en: 'plant pot', de: 'Blumentopf', hu: 'kaspó' }, expect: ['plant pots'] },
   { id: 'candle-holder', label: 'Candle holder', group: 'Decor',
     q: { en: 'candle holder', de: 'Kerzenhalter', hu: 'gyertyatartó' }, expect: ['candle holders', 'lanterns'] },
+  { id: 'clock', label: 'Clock', group: 'Decor',
+    // Hungarian "óra" is also the word for hour, and matches thermometers and timers.
+    q: { en: 'wall clock', de: 'Wanduhr', hu: 'falióra' }, expect: ['clocks'] },
+  { id: 'coat-rack', label: 'Coat rack', group: 'Decor',
+    q: { en: 'coat rack', de: 'Garderobe', hu: 'fogas' }, expect: ['clothes and shoe racks', 'hooks and hangers'] },
+
+  // --- Kitchen. Carcasses are deliberately absent: `base cabinets` and `wall cabinets`
+  // are ~1850 products in Austria alone with no context photography, and every card
+  // would read "METOD Base cabinet, white". IKEA models a kitchen as frame plus front,
+  // and only the front carries the look.
+  { id: 'kitchen-front', label: 'Kitchen front', group: 'Kitchen',
+    q: { en: 'kitchen front', de: 'Tür Küche', hu: 'ajtó konyha' }, expect: ['doors and fronts'] },
+  { id: 'kitchen-tap', label: 'Tap', group: 'Kitchen',
+    q: { en: 'kitchen tap', de: 'Küchenarmatur', hu: 'konyhai csaptelep' }, expect: ['taps'] },
+  { id: 'handle', label: 'Handles & knobs', group: 'Kitchen',
+    q: { en: 'handle', de: 'Griff', hu: 'fogantyú' }, expect: ['handles and knobs'] },
+  { id: 'kitchen-trolley', label: 'Kitchen trolley', group: 'Kitchen',
+    q: { en: 'kitchen trolley', de: 'Küchenwagen', hu: 'konyhakocsi' }, expect: ['trolleys'] },
+
+  // --- Bathroom
+  { id: 'bathroom-cabinet', label: 'Bathroom cabinet', group: 'Bathroom',
+    q: { en: 'bathroom cabinet', de: 'Badezimmerschrank', hu: 'fürdőszobaszekrény' },
+    expect: ['high cabinets', 'base cabinets', 'wash-stands', 'mirror cabinets'] },
+  { id: 'washbasin', label: 'Washbasin', group: 'Bathroom',
+    q: { en: 'washbasin', de: 'Waschbecken', hu: 'mosdó' },
+    expect: ['sink and wash basins', 'base cabinets', 'wash-stands'] },
+
+  // --- Outdoor
+  { id: 'outdoor-chair', label: 'Garden chair', group: 'Outdoor',
+    // Hungarian "kerti szék" returns 1598 by also matching plain "szék".
+    q: { en: 'outdoor chair', de: 'Gartenstuhl', hu: 'kültéri szék' },
+    expect: ['chairs', 'armchairs'] },
+  { id: 'outdoor-table', label: 'Garden table', group: 'Outdoor',
+    q: { en: 'outdoor table', de: 'Gartentisch', hu: 'kerti asztal' }, expect: ['tables'] },
 ]
 
 /**
@@ -149,9 +196,15 @@ export const MATERIALS = [
     matchLocal: ['korbgeflecht', 'geflecht', 'seegras', 'papierkordel', 'hanf',
       'fonott', 'juta', 'papírzsinór', 'kender'] },
   { id: 'leather', label: 'Leather', attribute: 'leather',
-    ikeaIds: ['38829', '51733', '38830'],
-    match: ['leather', 'cowhide', 'coated fabric'],
-    matchLocal: ['leder', 'kunstleder', 'rindsleder', 'bőr', 'műbőr'] },
+    ikeaIds: ['38829', '51733'],
+    match: ['leather', 'cowhide'],
+    matchLocal: ['leder', 'rindsleder', 'bőr'] },
+  // Faux leather was inside `leather`, which flattered it: on a sofa the difference
+  // between hide and coated fabric is most of the decision, and most of the price.
+  { id: 'faux-leather', label: 'Faux leather', attribute: 'leather',
+    ikeaIds: ['38830'],
+    match: ['coated fabric', 'faux leather'],
+    matchLocal: ['kunstleder', 'bevont szövet', 'műbőr'] },
   { id: 'velvet', label: 'Velvet', attribute: 'luxurious',
     ikeaIds: ['47494'], match: ['velvet'], matchLocal: ['samt', 'bársony'] },
   { id: 'wool', label: 'Wool & sheepskin', attribute: 'textile',
@@ -161,10 +214,13 @@ export const MATERIALS = [
   { id: 'linen-cotton', label: 'Linen & cotton', attribute: 'textile',
     ikeaIds: ['48341', '47458', '54756', '54759', '54757', '55096'],
     match: ['linen', 'cotton'], matchLocal: ['leinen', 'baumwolle', 'pamut'] },
-  { id: 'synthetic-textile', label: 'Synthetic textile', attribute: 'textile',
-    ikeaIds: ['48360', '48270', '47488', '65648', '62218', '47472', '48362', '47692', '47490', '38828'],
-    match: ['polyester', 'viscose', 'lyocell', 'rayon', 'synthetic', 'upholstered'],
-    matchLocal: ['viskose', 'synthetik', 'gepolstert', 'poliészter', 'viszkóz', 'kárpitozott'] },
+  // IKEA's catch-all "Fabric" covers most upholstery, so this is the single biggest
+  // material bucket. Calling it "Synthetic textile" — as an earlier version did, by
+  // folding facet 38828 in with polyester — was simply wrong: plenty of it is cotton.
+  { id: 'fabric', label: 'Fabric', attribute: 'textile',
+    ikeaIds: ['38828', '47692', '47490', '48360', '48270', '47488', '65648', '62218', '47472', '48362'],
+    match: ['polyester', 'viscose', 'lyocell', 'rayon', 'synthetic', 'upholstered', 'fabric'],
+    matchLocal: ['viskose', 'synthetik', 'gepolstert', 'stoff', 'poliészter', 'viszkóz', 'kárpitozott', 'szövet'] },
   { id: 'plastic', label: 'Plastic', attribute: 'sleek',
     ikeaIds: ['47675', '57822', '51379', '68007'],
     match: ['plastic', 'polypropylene', 'acrylic', 'silicone', 'rubber'],
