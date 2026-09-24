@@ -884,3 +884,121 @@ code {
   color: var(--text-dim);
   border-style: dashed;
 }
+
+/* ---------------------------------------------------------------------------
+   Product mode
+   --------------------------------------------------------------------------- */
+
+/* A cutout is a product floating on white; a room shot is a photograph. They want
+   opposite fits — `cover` crops a cutout's legs off, `contain` letterboxes a room. */
+.card--product .card__image--cutout {
+  object-fit: contain;
+  background: #fff;
+}
+
+/* With a white cutout behind it the dark gradient reads as dirt, so soften it and
+   keep just enough to hold the footer text. */
+.card--product .card__image--cutout ~ .card__shade {
+  height: 32%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
+}
+
+.card__type {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.card__price {
+  color: #fff;
+  font-size: 13px;
+}
+
+.tagchip--colour {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  flex: none;
+}
+
+.chip .swatch {
+  margin-right: 5px;
+  width: 10px;
+  height: 10px;
+}
+
+.shoplist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shoplist__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+
+.shoplist__link:hover {
+  border-color: var(--accent);
+}
+
+.shoplist__thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: #fff;
+  flex: none;
+}
+
+.shoplist__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.shoplist__name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The footer card uses a light-on-dark `.card__type`; in the list it sits on the
+   page background instead, so it needs the page's dim colour. */
+.shoplist__name .card__type {
+  color: var(--text-dim);
+}
+
+.shoplist__meta {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.shoplist__price {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}

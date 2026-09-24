@@ -1,7 +1,13 @@
 # Home Style Chooser
 
-A swipe-based quiz that works out which interior styles someone actually likes. Web and
-mobile from one codebase — a responsive PWA you can install on a phone home screen.
+A swipe-based quiz that works out which interior styles someone actually likes, and a
+shopping mode that turns the answer into a list of things you can buy. Web and mobile from
+one codebase — a responsive PWA you can install on a phone home screen.
+
+Three modes: the **two-round quiz** (three minutes, ranks 23 styles), **endless mode**
+(swipe the whole photo catalog across as many sittings as you like), and **shopping mode**
+(swipe real IKEA products for Austria or Hungary, end with a priced shortlist and
+recommendations).
 
 ## How it works
 
@@ -80,7 +86,9 @@ Other scripts:
 | `npm run tag`             | Re-derive the adjective tags from photo captions (no API) |
 | `npm run prune`           | Drop greyscale, non-room and Ignore-flagged photos       |
 | `npm run verify-catalog`  | Drop catalog entries whose URL no longer resolves        |
-| `npm test`                | 36 assertions over the engine and the lexicon             |
+| `npm run harvest-products`| Build the IKEA product catalog (AT + HU, no API key)    |
+| `npm run analyse-products`| Derive the tag co-occurrence used for recommendations   |
+| `npm test`                | 55 assertions over the engines and the lexicon            |
 | `npm run typecheck`       | `tsc --noEmit`                                           |
 | `npm run build`           | Typecheck + production build to `dist/`                  |
 
@@ -313,6 +321,122 @@ It reuses the quiz's scoring wholesale. Every scoring function reads only
 `{pool, answers, config}` — declared as `Scored` in `src/engine/quiz.ts` — so
 `InfiniteState` satisfies it structurally and there is one implementation, not two. The
 same `Results` screen renders both modes.
+
+## Shopping mode
+
+The quiz says "you're Japandi, bright, wooden". That's a fine sentence and you still can't
+buy anything with it. Shopping mode swipes **real IKEA products** — Austria or Hungary —
+and ends with a list of things, with prices and links.
+
+It is deliberately a separate mode with its own catalog file, not a card type mixed into
+the quiz. The quiz's deck builder assumes every card belongs to a design style, and
+`prune-catalog.mjs` exists specifically to *delete* product shots. A product would have to
+be exempted from both, and the exemptions would outnumber the shared code.
+
+```bash
+npm run harvest-products    # build src/data/products.json  (~20 min, no API key)
+npm run analyse-products    # derive src/data/affinity.json from it
+```
+
+### Where the data comes from
+
+IKEA's own storefront search backend answers unauthenticated, and returns far more than a
+scraper would get from the HTML:
+
+```
+GET sik.search.blue.cdtapps.com/{market}/{lang}/search-result-page?q=…&size=…
+```
+
+`size` is not a page limit — ask for 240 and you get all 228 matches — so there is no
+pagination to write. The response carries `COLOR` and `MATERIAL` facets with numeric ids
+that are **identical in every market** (`10003` is beige in `at/de`, `hu/hu` and `gb/en`
+alike), plus per-product price, rating, a white-background cutout, and usually a
+`CONTEXT_PRODUCT_IMAGE` — the product styled in a real room, which is what the card shows.
+
+The harvest runs in three passes:
+
+1. **Reference (`gb/en`).** Reads the facets and the English description. Colour and
+   material are properties of the product, not the market, so doing this once rather than
+   per-market cuts the run by two thirds. English also means the existing caption lexicon
+   in `scripts/attributes.mjs` works unchanged — no German or Hungarian word list.
+2. **Market (`at/de`, `hu/hu`).** Price, link, localised name. Joined to the reference pass
+   on `itemNoGlobal`, which is the same number in every market.
+3. **Text fallback.** Products outside the GB range parse their own design text instead.
+
+### What a product ends up tagged with
+
+Four axes. Three of them are read off the retailer rather than guessed:
+
+| Axis | Coverage | Source |
+| --- | --- | --- |
+| category (31 values) | 100% | the search query that found it |
+| colour (12) | ~87% | the variant's own design text |
+| material (14) | ~59% | IKEA's `MATERIAL` facet, queried per value |
+| adjectives | ~30% | the product's English alt text, through the room lexicon |
+
+There is **no style axis on products**, and that is a finding rather than an omission.
+Style is the one thing IKEA doesn't expose, so the alternative was to derive it. A rules
+table over category/material/colour/form fires on 6% of the catalogue, and 75% of those
+come out "scandinavian" — which is not a signal when the retailer is IKEA. A white BILLY
+bookcase genuinely has no style. The room quiz already establishes style; products don't
+need to repeat it.
+
+### Three traps the tagging fell into
+
+Worth writing down, because all three produce plausible-looking tags:
+
+- **Alt text describes the room, not the product.** IKEA's `CONTEXT_PRODUCT_IMAGE` alt
+  reads *"Modern living room with GLOSTAD sofa, botanical prints, black coffee table…"*.
+  Reading it tagged a plain grey sofa `glass`, `plants`, `wood` and `artsy`. Only the
+  `MAIN_PRODUCT_IMAGE` alt — *"dark grey, modern design, compact shape, sturdy metal
+  frame"* — is about the thing.
+- **Substrings.** `"Gunnared beige"` contains `red`. Colour matching uses letter-boundary
+  lookarounds, like `attributes.mjs` does, with an escape hatch for German compounds so
+  `hellbeige`, `dunkelgrau`, `graugrün` and `elfenbeinweiß` still match.
+- **Facets are family-level.** Filtering armchairs by red returns EKENÄSET because *some*
+  EKENÄSET is red, though the card shows the beige one. Colour is therefore read from the
+  variant's design text first, and a facet answer of more than two colours is discarded as
+  a statement about the range rather than the product.
+
+The adjective axis also used to include the adjective each colour and material implies
+(`rattan` → `rattan`, `green` → `greenery`) so every product had some. That made it 70% a
+restatement of the other two axes, and the catalog's "strongest correlations" came out as
+ceramic↔stone and black↔monochrome — one signal counted twice, which a recommender reads
+as corroboration. Adjectives now add information or they stay empty.
+
+## Recommendations
+
+`npm run analyse-products` measures which tags actually co-occur, by lift:
+
+```
+lift(a, b) = P(a and b) / (P(a) * P(b))
+```
+
+1.0 means unrelated; above 1 they attract, below 1 they repel. Both are useful — "you
+liked white, so probably not the black one" is as good a recommendation as its opposite.
+Pairs seen fewer than 20 times are dropped as coincidence. The result is written to
+`src/data/affinity.json` as a handful of neighbours per tag.
+
+`recommend()` in `src/engine/products.ts` uses it for three things:
+
+- **Measured belief.** Every tag the session actually saw gets `(rate - 0.5) * confidence`
+  from the same Laplace-smoothed scorer the quiz uses.
+- **Inferred belief.** Tags never seen are estimated from their neighbours, damped to 45%.
+  Someone who liked rattan has said something about jute. A borrowed opinion must never
+  outrank a measured one, or the recommender starts arguing with the user.
+- **Series.** IKEA's product name *is* its design family, and 80-odd series span more than
+  one category (STOCKHOLM 2025 covers sofa, armchair, dining chair, stool, bench and coffee
+  table). Liking one member lifts the rest — the one piece of genuine cross-category
+  transfer the catalog supports outright.
+
+Products are scored by the *mean* of their tags' beliefs, not the sum, so a thoroughly
+described product doesn't beat a better-matched sparse one. Selection is then greedy with
+a diversity penalty: without it the list is the same beige oak thing nine times, which is
+simultaneously perfectly targeted and completely useless. Each result carries the tags
+that earned it, so the UI can say *because you liked oak, beige*.
+
+The affinity file is optional — if it's missing, recommendations fall back to directly
+measured tags. Worse, but never broken.
 
 ## Interaction
 

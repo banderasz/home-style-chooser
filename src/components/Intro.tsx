@@ -9,6 +9,9 @@ interface Props {
   onInfinite: () => void
   /** How many photos the endless deck already has verdicts for, if any. */
   infiniteJudged: number
+  onShop: (market: 'at' | 'hu') => void
+  /** The market the last product session used, so the button offers that one first. */
+  shopMarket: 'at' | 'hu'
 }
 
 export default function Intro({
@@ -20,7 +23,11 @@ export default function Intro({
   onResume,
   onInfinite,
   infiniteJudged,
+  onShop,
+  shopMarket,
 }: Props) {
+  const other = shopMarket === 'at' ? 'hu' : 'at'
+  const label = { at: 'Austria', hu: 'Hungary' } as const
   return (
     <section className="intro">
       <p className="eyebrow">Home Style Chooser</p>
@@ -70,7 +77,23 @@ export default function Intro({
             ? `Endless mode — ${infiniteJudged} judged`
             : 'Endless mode — judge the whole catalog'}
         </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--wide"
+          onClick={() => onShop(shopMarket)}
+        >
+          Shop the look — IKEA {label[shopMarket]}
+        </button>
       </div>
+
+      <p className="intro__note">
+        Shopping mode swipes real IKEA products instead of rooms, and ends with a list you can
+        actually buy from. Prices and links are for {label[shopMarket]} —{' '}
+        <button type="button" className="linkish" onClick={() => onShop(other)}>
+          switch to {label[other]}
+        </button>
+        .
+      </p>
 
       <p className="intro__note">
         Endless mode has no rounds and no end: swipe as long as you like, the ranking updates

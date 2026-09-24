@@ -18,13 +18,22 @@ import {
   shuffled,
   type Answer,
   type QuizConfig,
-  type Scored,
   type Verdict,
 } from './quiz'
 
-export interface InfiniteState extends Scored {
+/**
+ * Anything the queue can serve. The policy below never reads a field other than `id`, so
+ * it is generic: the endless room deck instantiates it at `HomeImage`, the product mode
+ * at `Product`. At `HomeImage` it still satisfies `Scored` structurally, which is what
+ * lets the results screen take an `InfiniteState` unchanged.
+ */
+export interface Identified {
+  id: string
+}
+
+export interface InfiniteState<T extends Identified = HomeImage> {
   config: QuizConfig
-  pool: HomeImage[]
+  pool: T[]
   /** One entry per image at most, in the order judged. Always `phase: 1`. */
   answers: Answer[]
   /** Photos dropped as unusable. Never scored, never re-served. */
@@ -42,10 +51,10 @@ export interface SavedInfinite {
   answers: { i: string; v: Verdict }[]
 }
 
-export function createInfinite(
-  pool: HomeImage[],
+export function createInfinite<T extends Identified>(
+  pool: T[],
   seed = Math.floor(Math.random() * 2 ** 31),
-): InfiniteState {
+): InfiniteState<T> {
   return {
     config: DEFAULT_CONFIG,
     pool,
@@ -57,7 +66,7 @@ export function createInfinite(
   }
 }
 
-const judgedIds = (state: InfiniteState): Set<string> =>
+const judgedIds = <T extends Identified>(state: InfiniteState<T>): Set<string> =>
   new Set([...state.answers.map((a) => a.imageId), ...state.skipped])
 
 /**
@@ -68,7 +77,7 @@ const judgedIds = (state: InfiniteState): Set<string> =>
  * seed-derived order: clearing a verdict in the history screen puts that photo back in
  * its original place instead of at the end.
  */
-function nextUnjudged(state: InfiniteState, from: number): number {
+function nextUnjudged<T extends Identified>(state: InfiniteState<T>, from: number): number {
   const judged = judgedIds(state)
   let i = Math.max(0, from)
   while (i < state.queue.length && judged.has(state.queue[i])) i++
@@ -76,20 +85,20 @@ function nextUnjudged(state: InfiniteState, from: number): number {
 }
 
 /** Re-points the cursor at the next card needing a verdict. */
-function settle(state: InfiniteState): InfiniteState {
+function settle<T extends Identified>(state: InfiniteState<T>): InfiniteState<T> {
   const cursor = nextUnjudged(state, state.cursor)
   return cursor === state.cursor ? state : { ...state, cursor }
 }
 
-export function currentImage(state: InfiniteState): HomeImage | null {
+export function currentImage<T extends Identified>(state: InfiniteState<T>): T | null {
   const id = state.queue[state.cursor]
   if (!id) return null
   return state.pool.find((i) => i.id === id) ?? null
 }
 
 /** The cards behind the top one, so the stack can pre-render and preload them. */
-export function upcoming(state: InfiniteState, count = 2): HomeImage[] {
-  const out: HomeImage[] = []
+export function upcoming<T extends Identified>(state: InfiniteState<T>, count = 2): T[] {
+  const out: T[] = []
   const judged = judgedIds(state)
   for (let i = state.cursor + 1; i < state.queue.length && out.length < count; i++) {
     const id = state.queue[i]
@@ -100,7 +109,7 @@ export function upcoming(state: InfiniteState, count = 2): HomeImage[] {
   return out
 }
 
-export function judge(state: InfiniteState, verdict: Verdict): InfiniteState {
+export function judge<T extends Identified>(state: InfiniteState<T>, verdict: Verdict): InfiniteState<T> {
   const img = currentImage(state)
   if (!img) return state
   return settle({
@@ -114,11 +123,11 @@ export function judge(state: InfiniteState, verdict: Verdict): InfiniteState {
  * `null` clears it, which removes the image from scoring entirely and returns it to the
  * queue to be asked again.
  */
-export function setVerdict(
-  state: InfiniteState,
+export function setVerdict<T extends Identified>(
+  state: InfiniteState<T>,
   imageId: string,
   verdict: Verdict | null,
-): InfiniteState {
+): InfiniteState<T> {
   const at = state.answers.findIndex((a) => a.imageId === imageId)
 
   if (verdict === null) {
@@ -141,7 +150,7 @@ export function setVerdict(
 }
 
 /** Drop the current card as an unusable photo. Never becomes evidence. */
-export function skipCurrent(state: InfiniteState): InfiniteState {
+export function skipCurrent<T extends Identified>(state: InfiniteState<T>): InfiniteState<T> {
   const img = currentImage(state)
   if (!img) return state
   return settle({
@@ -155,7 +164,7 @@ export function skipCurrent(state: InfiniteState): InfiniteState {
  * Step back to the last card judged and un-judge it. Unlimited, unlike the quiz's
  * one-step phase-scoped undo — there are no phases here and nothing to keep stable.
  */
-export function undo(state: InfiniteState): InfiniteState {
+export function undo<T extends Identified>(state: InfiniteState<T>): InfiniteState<T> {
   const last = state.answers[state.answers.length - 1]
   if (!last) return state
   const back = state.queue.indexOf(last.imageId)
@@ -176,7 +185,7 @@ export interface InfiniteStats {
   likeRate: number
 }
 
-export function stats(state: InfiniteState): InfiniteStats {
+export function stats<T extends Identified>(state: InfiniteState<T>): InfiniteStats {
   const judged = state.answers.length
   const liked = state.answers.filter((a) => a.verdict === 'like').length
   return {
@@ -189,9 +198,11 @@ export function stats(state: InfiniteState): InfiniteStats {
 }
 
 /** Every judged image with its verdict, most recently judged first. */
-export function history(state: InfiniteState): { image: HomeImage; verdict: Verdict }[] {
+export function history<T extends Identified>(
+  state: InfiniteState<T>,
+): { image: T; verdict: Verdict }[] {
   const byId = new Map(state.pool.map((i) => [i.id, i]))
-  const out: { image: HomeImage; verdict: Verdict }[] = []
+  const out: { image: T; verdict: Verdict }[] = []
   for (let i = state.answers.length - 1; i >= 0; i--) {
     const a = state.answers[i]
     const image = byId.get(a.imageId)
@@ -204,7 +215,7 @@ export function history(state: InfiniteState): { image: HomeImage; verdict: Verd
 // Persistence
 // ---------------------------------------------------------------------------
 
-export function toSaved(state: InfiniteState): SavedInfinite {
+export function toSaved<T extends Identified>(state: InfiniteState<T>): SavedInfinite {
   return {
     seed: state.seed,
     skipped: state.skipped,
@@ -221,7 +232,7 @@ export function toSaved(state: InfiniteState): SavedInfinite {
  * retired photo costs exactly one verdict — throwing away a thousand others to avoid that
  * would be absurd.
  */
-export function fromSaved(pool: HomeImage[], saved: SavedInfinite): InfiniteState {
+export function fromSaved<T extends Identified>(pool: T[], saved: SavedInfinite): InfiniteState<T> {
   const ids = new Set(pool.map((i) => i.id))
   const seen = new Set<string>()
   const answers: Answer[] = []

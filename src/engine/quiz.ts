@@ -331,21 +331,34 @@ function indexOf(pool: HomeImage[]): Map<string, HomeImage> {
   return index
 }
 
-export function scoreTags(state: Scored, axis: Axis, universe?: string[]): TagScore[] {
+/** One judged card, reduced to what the ranking actually reads. */
+export interface TagEvidence {
+  tags: string[]
+  verdict: Verdict
+  /** Phase weighting, already applied by the caller. */
+  weight: number
+}
+
+/**
+ * The ranking itself, over evidence that has already been gathered. Split out from
+ * `scoreTags` so the product mode can rank its own axes — category, material, colour —
+ * without either duplicating this arithmetic or forcing a product to pretend it is a
+ * `HomeImage`. `scoreTags` below is the room-photo caller.
+ */
+export function rankTags(
+  evidence: TagEvidence[],
+  split: (k: number) => number,
+  universe?: string[],
+): TagScore[] {
   const seen = new Map<string, number>()
   const liked = new Map<string, number>()
-  const byId = indexOf(state.pool)
 
-  for (const answer of state.answers) {
-    const img = byId.get(answer.imageId)
-    if (!img) continue
-    const tags = tagsOf(img, axis)
+  for (const { tags, verdict, weight } of evidence) {
     if (tags.length === 0) continue
-    const weight = answer.phase === 2 ? state.config.phase2Weight : 1
-    const share = weight * SPLIT[axis](tags.length)
+    const share = weight * split(tags.length)
     for (const tagId of tags) {
       seen.set(tagId, (seen.get(tagId) ?? 0) + share)
-      if (answer.verdict === 'like') liked.set(tagId, (liked.get(tagId) ?? 0) + share)
+      if (verdict === 'like') liked.set(tagId, (liked.get(tagId) ?? 0) + share)
     }
   }
 
@@ -367,6 +380,23 @@ export function scoreTags(state: Scored, axis: Axis, universe?: string[]): TagSc
       }
     })
     .sort((a, b) => b.rank - a.rank)
+}
+
+export function scoreTags(state: Scored, axis: Axis, universe?: string[]): TagScore[] {
+  const byId = indexOf(state.pool)
+  const evidence: TagEvidence[] = []
+
+  for (const answer of state.answers) {
+    const img = byId.get(answer.imageId)
+    if (!img) continue
+    evidence.push({
+      tags: tagsOf(img, axis),
+      verdict: answer.verdict,
+      weight: answer.phase === 2 ? state.config.phase2Weight : 1,
+    })
+  }
+
+  return rankTags(evidence, SPLIT[axis], universe)
 }
 
 export function scoreStyles(state: Scored): StyleScore[] {

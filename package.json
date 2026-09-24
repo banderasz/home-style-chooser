@@ -12,7 +12,9 @@
     "harvest": "node scripts/harvest.mjs",
     "tag": "node scripts/tag-attributes.mjs",
     "prune": "node scripts/prune-catalog.mjs",
-    "verify-catalog": "node scripts/verify-catalog.mjs"
+    "verify-catalog": "node scripts/verify-catalog.mjs",
+    "harvest-products": "node scripts/harvest-products.mjs",
+    "analyse-products": "node scripts/analyse-products.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

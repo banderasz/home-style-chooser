@@ -1,0 +1,3061 @@
+{
+ "generatedBy": "scripts/analyse-products.mjs",
+ "items": 4986,
+ "minSupport": 20,
+ "neighbours": {
+  "a:artsy": [
+   {
+    "tag": "k:bed",
+    "lift": 8.74
+   },
+   {
+    "tag": "k:frame",
+    "lift": 5.32
+   },
+   {
+    "tag": "a:metal",
+    "lift": 4.5
+   },
+   {
+    "tag": "a:curved",
+    "lift": 3.84
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 3.53
+   },
+   {
+    "tag": "a:modern",
+    "lift": 3.49
+   },
+   {
+    "tag": "k:mirror",
+    "lift": 3.48
+   },
+   {
+    "tag": "a:wood",
+    "lift": 3.38
+   }
+  ],
+  "a:blue": [
+   {
+    "tag": "c:blue",
+    "lift": 20.46
+   },
+   {
+    "tag": "a:dark",
+    "lift": 12.37
+   },
+   {
+    "tag": "a:textile",
+    "lift": 5.17
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 5.16
+   }
+  ],
+  "a:colourful": [
+   {
+    "tag": "c:multi",
+    "lift": 22.4
+   },
+   {
+    "tag": "a:textile",
+    "lift": 8.34
+   }
+  ],
+  "a:cozy": [
+   {
+    "tag": "a:modern",
+    "lift": 6.82
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 6.63
+   }
+  ],
+  "a:curved": [
+   {
+    "tag": "a:rattan",
+    "lift": 6.68
+   },
+   {
+    "tag": "k:table-lamp",
+    "lift": 5.86
+   },
+   {
+    "tag": "m:ceramic",
+    "lift": 5.84
+   },
+   {
+    "tag": "m:rattan",
+    "lift": 5.67
+   },
+   {
+    "tag": "a:metal",
+    "lift": 4.13
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 4.06
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.84
+   },
+   {
+    "tag": "a:glass",
+    "lift": 3.72
+   }
+  ],
+  "a:dark": [
+   {
+    "tag": "a:blue",
+    "lift": 12.37
+   },
+   {
+    "tag": "a:textile",
+    "lift": 4.92
+   },
+   {
+    "tag": "c:blue",
+    "lift": 4.33
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 3.41
+   },
+   {
+    "tag": "a:metal",
+    "lift": 3.05
+   },
+   {
+    "tag": "a:wood",
+    "lift": 2.99
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 2.93
+   },
+   {
+    "tag": "c:grey",
+    "lift": 2.92
+   }
+  ],
+  "a:elegant": [
+   {
+    "tag": "a:glass",
+    "lift": 6.2
+   }
+  ],
+  "a:geometric": [
+   {
+    "tag": "k:rug",
+    "lift": 4.93
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 4.26
+   },
+   {
+    "tag": "a:textile",
+    "lift": 4.07
+   },
+   {
+    "tag": "a:rattan",
+    "lift": 3.66
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 3.42
+   },
+   {
+    "tag": "a:wood",
+    "lift": 3.19
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 3.11
+   },
+   {
+    "tag": "a:modern",
+    "lift": 3.08
+   }
+  ],
+  "a:glass": [
+   {
+    "tag": "m:glass",
+    "lift": 8.54
+   },
+   {
+    "tag": "a:elegant",
+    "lift": 6.2
+   },
+   {
+    "tag": "k:candle-holder",
+    "lift": 6.03
+   },
+   {
+    "tag": "k:mirror",
+    "lift": 5.07
+   },
+   {
+    "tag": "a:curved",
+    "lift": 3.72
+   },
+   {
+    "tag": "k:vase",
+    "lift": 3.45
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.03
+   },
+   {
+    "tag": "a:modern",
+    "lift": 2.96
+   }
+  ],
+  "a:metal": [
+   {
+    "tag": "m:metal",
+    "lift": 6.87
+   },
+   {
+    "tag": "k:table-lamp",
+    "lift": 4.91
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 4.5
+   },
+   {
+    "tag": "a:curved",
+    "lift": 4.13
+   },
+   {
+    "tag": "a:modern",
+    "lift": 4.02
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 3.84
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 3.16
+   },
+   {
+    "tag": "a:dark",
+    "lift": 3.05
+   }
+  ],
+  "a:minimal": [
+   {
+    "tag": "m:veneer",
+    "lift": 4.35
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 4.26
+   },
+   {
+    "tag": "a:modern",
+    "lift": 4
+   },
+   {
+    "tag": "k:drawers",
+    "lift": 3.54
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.53
+   },
+   {
+    "tag": "a:wood",
+    "lift": 2.94
+   },
+   {
+    "tag": "a:metal",
+    "lift": 2.55
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 2.46
+   }
+  ],
+  "a:modern": [
+   {
+    "tag": "a:cozy",
+    "lift": 6.82
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 6.23
+   },
+   {
+    "tag": "a:metal",
+    "lift": 4.02
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 4
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.49
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 3.08
+   },
+   {
+    "tag": "k:drawers",
+    "lift": 2.99
+   },
+   {
+    "tag": "a:glass",
+    "lift": 2.96
+   }
+  ],
+  "a:neutral": [
+   {
+    "tag": "a:textile",
+    "lift": 6.16
+   },
+   {
+    "tag": "c:beige",
+    "lift": 5.51
+   },
+   {
+    "tag": "a:rattan",
+    "lift": 5.25
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 4.39
+   },
+   {
+    "tag": "k:rug",
+    "lift": 4.22
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 3.96
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 3.18
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 3.11
+   }
+  ],
+  "a:patterned": [
+   {
+    "tag": "c:multi",
+    "lift": 11.63
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 10.01
+   },
+   {
+    "tag": "a:textile",
+    "lift": 9.82
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 9.58
+   },
+   {
+    "tag": "k:rug",
+    "lift": 5.17
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 5
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 3.96
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 3.42
+   }
+  ],
+  "a:plants": [
+   {
+    "tag": "k:plant-pot",
+    "lift": 16.3
+   },
+   {
+    "tag": "m:ceramic",
+    "lift": 12.89
+   },
+   {
+    "tag": "c:green",
+    "lift": 5.12
+   },
+   {
+    "tag": "m:plastic",
+    "lift": 3.61
+   },
+   {
+    "tag": "a:curved",
+    "lift": 3.25
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 2.52
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.5
+   }
+  ],
+  "a:rattan": [
+   {
+    "tag": "m:rattan",
+    "lift": 37.88
+   },
+   {
+    "tag": "a:curved",
+    "lift": 6.68
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 5.25
+   },
+   {
+    "tag": "a:textile",
+    "lift": 4.94
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 3.66
+   },
+   {
+    "tag": "c:beige",
+    "lift": 3.1
+   }
+  ],
+  "a:sleek": [
+   {
+    "tag": "a:modern",
+    "lift": 6.23
+   },
+   {
+    "tag": "a:curved",
+    "lift": 4.06
+   },
+   {
+    "tag": "a:metal",
+    "lift": 3.84
+   },
+   {
+    "tag": "k:drawers",
+    "lift": 3.4
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 3.17
+   },
+   {
+    "tag": "a:glass",
+    "lift": 2.96
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 2.81
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 2.46
+   }
+  ],
+  "a:textile": [
+   {
+    "tag": "a:patterned",
+    "lift": 9.82
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 8.43
+   },
+   {
+    "tag": "a:colourful",
+    "lift": 8.34
+   },
+   {
+    "tag": "k:rug",
+    "lift": 7.38
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 6.74
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 6.16
+   },
+   {
+    "tag": "c:multi",
+    "lift": 5.38
+   },
+   {
+    "tag": "a:blue",
+    "lift": 5.17
+   }
+  ],
+  "a:vintage": [
+   {
+    "tag": "a:wood",
+    "lift": 6.02
+   }
+  ],
+  "a:wood": [
+   {
+    "tag": "k:bench",
+    "lift": 6.4
+   },
+   {
+    "tag": "a:vintage",
+    "lift": 6.02
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 4.67
+   },
+   {
+    "tag": "c:brown",
+    "lift": 4.16
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.38
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 3.28
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 3.19
+   },
+   {
+    "tag": "a:dark",
+    "lift": 2.99
+   }
+  ],
+  "c:beige": [
+   {
+    "tag": "a:neutral",
+    "lift": 5.51
+   },
+   {
+    "tag": "a:rattan",
+    "lift": 3.1
+   },
+   {
+    "tag": "c:black",
+    "lift": 0.34
+   },
+   {
+    "tag": "k:armchair",
+    "lift": 2.79
+   },
+   {
+    "tag": "k:sofa",
+    "lift": 2.76
+   },
+   {
+    "tag": "m:rattan",
+    "lift": 2.74
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.39
+   },
+   {
+    "tag": "m:glass",
+    "lift": 0.42
+   }
+  ],
+  "c:black": [
+   {
+    "tag": "c:beige",
+    "lift": 0.34
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.37
+   },
+   {
+    "tag": "k:dining-table",
+    "lift": 2.49
+   },
+   {
+    "tag": "a:metal",
+    "lift": 2.31
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 2.19
+   },
+   {
+    "tag": "m:metal",
+    "lift": 2.06
+   },
+   {
+    "tag": "a:dark",
+    "lift": 1.99
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 1.94
+   }
+  ],
+  "c:blue": [
+   {
+    "tag": "a:blue",
+    "lift": 20.46
+   },
+   {
+    "tag": "a:dark",
+    "lift": 4.33
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 3.93
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 2.82
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.42
+   },
+   {
+    "tag": "k:armchair",
+    "lift": 2.23
+   },
+   {
+    "tag": "k:sofa",
+    "lift": 1.78
+   }
+  ],
+  "c:brown": [
+   {
+    "tag": "c:white",
+    "lift": 0.14
+   },
+   {
+    "tag": "a:wood",
+    "lift": 4.16
+   },
+   {
+    "tag": "k:dining-table",
+    "lift": 2.62
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 2.41
+   },
+   {
+    "tag": "a:dark",
+    "lift": 2.29
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 2.08
+   },
+   {
+    "tag": "m:metal",
+    "lift": 0.52
+   },
+   {
+    "tag": "c:grey",
+    "lift": 0.54
+   }
+  ],
+  "c:green": [
+   {
+    "tag": "a:plants",
+    "lift": 5.12
+   },
+   {
+    "tag": "k:plant-pot",
+    "lift": 3.49
+   },
+   {
+    "tag": "a:dark",
+    "lift": 2.68
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.43
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 2.31
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 1.98
+   },
+   {
+    "tag": "k:vase",
+    "lift": 1.82
+   }
+  ],
+  "c:grey": [
+   {
+    "tag": "a:dark",
+    "lift": 2.92
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.43
+   },
+   {
+    "tag": "a:metal",
+    "lift": 2.09
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 2.01
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 0.52
+   },
+   {
+    "tag": "c:brown",
+    "lift": 0.54
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 1.78
+   },
+   {
+    "tag": "k:dining-table",
+    "lift": 1.74
+   }
+  ],
+  "c:multi": [
+   {
+    "tag": "a:colourful",
+    "lift": 22.4
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 11.63
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 6.85
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 6.42
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 6.34
+   },
+   {
+    "tag": "a:textile",
+    "lift": 5.38
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 2.4
+   }
+  ],
+  "c:pink": [
+   {
+    "tag": "k:candle-holder",
+    "lift": 6.36
+   },
+   {
+    "tag": "k:plant-pot",
+    "lift": 3.79
+   },
+   {
+    "tag": "a:glass",
+    "lift": 2.72
+   },
+   {
+    "tag": "m:glass",
+    "lift": 2.31
+   }
+  ],
+  "c:white": [
+   {
+    "tag": "c:brown",
+    "lift": 0.14
+   },
+   {
+    "tag": "k:armchair",
+    "lift": 0.25
+   },
+   {
+    "tag": "c:black",
+    "lift": 0.37
+   },
+   {
+    "tag": "c:beige",
+    "lift": 0.39
+   },
+   {
+    "tag": "c:blue",
+    "lift": 0.42
+   },
+   {
+    "tag": "c:grey",
+    "lift": 0.43
+   },
+   {
+    "tag": "c:green",
+    "lift": 0.43
+   },
+   {
+    "tag": "k:plant-pot",
+    "lift": 0.44
+   }
+  ],
+  "c:yellow": [
+   {
+    "tag": "a:textile",
+    "lift": 2.73
+   }
+  ],
+  "k:armchair": [
+   {
+    "tag": "c:white",
+    "lift": 0.25
+   },
+   {
+    "tag": "c:beige",
+    "lift": 2.79
+   },
+   {
+    "tag": "a:curved",
+    "lift": 2.51
+   },
+   {
+    "tag": "c:blue",
+    "lift": 2.23
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 2.11
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 1.91
+   },
+   {
+    "tag": "c:grey",
+    "lift": 1.6
+   }
+  ],
+  "k:bed": [
+   {
+    "tag": "a:artsy",
+    "lift": 8.74
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 1.8
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 1.8
+   },
+   {
+    "tag": "a:modern",
+    "lift": 1.62
+   }
+  ],
+  "k:bedding": [
+   {
+    "tag": "m:linen-cotton",
+    "lift": 8.97
+   },
+   {
+    "tag": "m:wool",
+    "lift": 8.2
+   },
+   {
+    "tag": "c:multi",
+    "lift": 6.42
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 5
+   },
+   {
+    "tag": "c:blue",
+    "lift": 3.93
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 3.1
+   },
+   {
+    "tag": "a:textile",
+    "lift": 2.77
+   },
+   {
+    "tag": "c:green",
+    "lift": 2.31
+   }
+  ],
+  "k:bench": [
+   {
+    "tag": "a:wood",
+    "lift": 6.4
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 3.64
+   }
+  ],
+  "k:bookcase": [
+   {
+    "tag": "a:glass",
+    "lift": 2.59
+   },
+   {
+    "tag": "m:glass",
+    "lift": 2.52
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 2.41
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 1.85
+   },
+   {
+    "tag": "c:brown",
+    "lift": 1.71
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 1.67
+   }
+  ],
+  "k:candle-holder": [
+   {
+    "tag": "c:pink",
+    "lift": 6.36
+   },
+   {
+    "tag": "a:glass",
+    "lift": 6.03
+   },
+   {
+    "tag": "m:glass",
+    "lift": 4.64
+   },
+   {
+    "tag": "a:metal",
+    "lift": 2
+   }
+  ],
+  "k:curtain": [
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 2.66
+   }
+  ],
+  "k:cushion": [
+   {
+    "tag": "a:patterned",
+    "lift": 10.01
+   },
+   {
+    "tag": "a:textile",
+    "lift": 8.43
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 7.72
+   },
+   {
+    "tag": "c:multi",
+    "lift": 6.34
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 3.18
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 2.85
+   }
+  ],
+  "k:desk": [
+   {
+    "tag": "m:metal",
+    "lift": 2.02
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 1.87
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 1.76
+   },
+   {
+    "tag": "a:metal",
+    "lift": 1.66
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 1.64
+   },
+   {
+    "tag": "c:white",
+    "lift": 1.62
+   }
+  ],
+  "k:dining-chair": [
+   {
+    "tag": "a:metal",
+    "lift": 3.16
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 3.01
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 2.76
+   },
+   {
+    "tag": "a:wood",
+    "lift": 2.46
+   },
+   {
+    "tag": "c:black",
+    "lift": 2.19
+   },
+   {
+    "tag": "m:metal",
+    "lift": 2.17
+   },
+   {
+    "tag": "c:grey",
+    "lift": 2.01
+   },
+   {
+    "tag": "a:textile",
+    "lift": 1.93
+   }
+  ],
+  "k:dining-table": [
+   {
+    "tag": "m:veneer",
+    "lift": 3.39
+   },
+   {
+    "tag": "c:brown",
+    "lift": 2.62
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 2.58
+   },
+   {
+    "tag": "c:black",
+    "lift": 2.49
+   },
+   {
+    "tag": "a:wood",
+    "lift": 2.41
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 2.02
+   },
+   {
+    "tag": "m:metal",
+    "lift": 1.88
+   },
+   {
+    "tag": "a:metal",
+    "lift": 1.77
+   }
+  ],
+  "k:drawers": [
+   {
+    "tag": "a:minimal",
+    "lift": 3.54
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 3.4
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 3.3
+   },
+   {
+    "tag": "a:modern",
+    "lift": 2.99
+   },
+   {
+    "tag": "c:white",
+    "lift": 1.87
+   }
+  ],
+  "k:floor-lamp": [
+   {
+    "tag": "m:metal",
+    "lift": 5.65
+   }
+  ],
+  "k:frame": [
+   {
+    "tag": "a:artsy",
+    "lift": 5.32
+   },
+   {
+    "tag": "m:plastic",
+    "lift": 2.75
+   }
+  ],
+  "k:media-unit": [
+   {
+    "tag": "m:glass",
+    "lift": 2.5
+   },
+   {
+    "tag": "a:glass",
+    "lift": 2.03
+   },
+   {
+    "tag": "a:wood",
+    "lift": 1.93
+   },
+   {
+    "tag": "m:solid-wood",
+    "lift": 1.9
+   },
+   {
+    "tag": "a:modern",
+    "lift": 1.79
+   },
+   {
+    "tag": "c:beige",
+    "lift": 0.58
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 1.65
+   }
+  ],
+  "k:mirror": [
+   {
+    "tag": "m:glass",
+    "lift": 5.22
+   },
+   {
+    "tag": "a:glass",
+    "lift": 5.07
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 3.48
+   }
+  ],
+  "k:pendant": [
+   {
+    "tag": "m:plastic",
+    "lift": 3.56
+   },
+   {
+    "tag": "a:metal",
+    "lift": 2.79
+   },
+   {
+    "tag": "m:metal",
+    "lift": 2.21
+   },
+   {
+    "tag": "m:glass",
+    "lift": 1.76
+   },
+   {
+    "tag": "c:black",
+    "lift": 1.69
+   }
+  ],
+  "k:plant-pot": [
+   {
+    "tag": "a:plants",
+    "lift": 16.3
+   },
+   {
+    "tag": "m:ceramic",
+    "lift": 8.77
+   },
+   {
+    "tag": "c:pink",
+    "lift": 3.79
+   },
+   {
+    "tag": "m:plastic",
+    "lift": 3.53
+   },
+   {
+    "tag": "c:green",
+    "lift": 3.49
+   },
+   {
+    "tag": "c:white",
+    "lift": 0.44
+   },
+   {
+    "tag": "a:curved",
+    "lift": 1.83
+   }
+  ],
+  "k:rug": [
+   {
+    "tag": "m:wool",
+    "lift": 8.63
+   },
+   {
+    "tag": "a:textile",
+    "lift": 7.38
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 5.17
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 4.93
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 4.22
+   },
+   {
+    "tag": "m:synthetic-textile",
+    "lift": 3.86
+   },
+   {
+    "tag": "m:linen-cotton",
+    "lift": 2.49
+   },
+   {
+    "tag": "c:beige",
+    "lift": 2.12
+   }
+  ],
+  "k:shelving": [
+   {
+    "tag": "a:metal",
+    "lift": 2.11
+   },
+   {
+    "tag": "m:metal",
+    "lift": 1.95
+   },
+   {
+    "tag": "a:minimal",
+    "lift": 1.81
+   }
+  ],
+  "k:side-table": [
+   {
+    "tag": "m:solid-wood",
+    "lift": 2.76
+   }
+  ],
+  "k:sideboard": [
+   {
+    "tag": "m:veneer",
+    "lift": 2.61
+   }
+  ],
+  "k:sofa": [
+   {
+    "tag": "c:beige",
+    "lift": 2.76
+   },
+   {
+    "tag": "a:modern",
+    "lift": 1.91
+   },
+   {
+    "tag": "c:blue",
+    "lift": 1.78
+   },
+   {
+    "tag": "c:brown",
+    "lift": 1.68
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 1.62
+   }
+  ],
+  "k:stool": [
+   {
+    "tag": "c:beige",
+    "lift": 2.02
+   }
+  ],
+  "k:table-lamp": [
+   {
+    "tag": "m:plastic",
+    "lift": 7.42
+   },
+   {
+    "tag": "a:curved",
+    "lift": 5.86
+   },
+   {
+    "tag": "a:metal",
+    "lift": 4.91
+   },
+   {
+    "tag": "m:metal",
+    "lift": 3.18
+   }
+  ],
+  "k:vase": [
+   {
+    "tag": "m:ceramic",
+    "lift": 11.33
+   },
+   {
+    "tag": "m:glass",
+    "lift": 3.55
+   },
+   {
+    "tag": "a:glass",
+    "lift": 3.45
+   },
+   {
+    "tag": "a:curved",
+    "lift": 2.48
+   },
+   {
+    "tag": "c:green",
+    "lift": 1.82
+   }
+  ],
+  "k:wardrobe": [
+   {
+    "tag": "c:beige",
+    "lift": 0.53
+   },
+   {
+    "tag": "c:white",
+    "lift": 1.74
+   },
+   {
+    "tag": "m:veneer",
+    "lift": 1.66
+   },
+   {
+    "tag": "c:grey",
+    "lift": 1.65
+   }
+  ],
+  "m:ceramic": [
+   {
+    "tag": "a:plants",
+    "lift": 12.89
+   },
+   {
+    "tag": "k:vase",
+    "lift": 11.33
+   },
+   {
+    "tag": "k:plant-pot",
+    "lift": 8.77
+   },
+   {
+    "tag": "a:curved",
+    "lift": 5.84
+   }
+  ],
+  "m:glass": [
+   {
+    "tag": "a:glass",
+    "lift": 8.54
+   },
+   {
+    "tag": "k:mirror",
+    "lift": 5.22
+   },
+   {
+    "tag": "k:candle-holder",
+    "lift": 4.64
+   },
+   {
+    "tag": "k:vase",
+    "lift": 3.55
+   },
+   {
+    "tag": "k:bookcase",
+    "lift": 2.52
+   },
+   {
+    "tag": "k:media-unit",
+    "lift": 2.5
+   },
+   {
+    "tag": "c:beige",
+    "lift": 0.42
+   },
+   {
+    "tag": "c:pink",
+    "lift": 2.31
+   }
+  ],
+  "m:linen-cotton": [
+   {
+    "tag": "m:wool",
+    "lift": 12.8
+   },
+   {
+    "tag": "a:patterned",
+    "lift": 9.58
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 8.97
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 7.72
+   },
+   {
+    "tag": "c:multi",
+    "lift": 6.85
+   },
+   {
+    "tag": "a:textile",
+    "lift": 6.74
+   },
+   {
+    "tag": "a:blue",
+    "lift": 5.16
+   },
+   {
+    "tag": "a:dark",
+    "lift": 3.41
+   }
+  ],
+  "m:metal": [
+   {
+    "tag": "a:metal",
+    "lift": 6.87
+   },
+   {
+    "tag": "k:floor-lamp",
+    "lift": 5.65
+   },
+   {
+    "tag": "k:table-lamp",
+    "lift": 3.18
+   },
+   {
+    "tag": "a:modern",
+    "lift": 2.31
+   },
+   {
+    "tag": "k:pendant",
+    "lift": 2.21
+   },
+   {
+    "tag": "a:artsy",
+    "lift": 2.18
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 2.17
+   },
+   {
+    "tag": "a:curved",
+    "lift": 2.17
+   }
+  ],
+  "m:plastic": [
+   {
+    "tag": "k:table-lamp",
+    "lift": 7.42
+   },
+   {
+    "tag": "a:plants",
+    "lift": 3.61
+   },
+   {
+    "tag": "k:pendant",
+    "lift": 3.56
+   },
+   {
+    "tag": "k:plant-pot",
+    "lift": 3.53
+   },
+   {
+    "tag": "k:frame",
+    "lift": 2.75
+   },
+   {
+    "tag": "a:curved",
+    "lift": 2.45
+   },
+   {
+    "tag": "m:metal",
+    "lift": 2.06
+   },
+   {
+    "tag": "c:black",
+    "lift": 1.71
+   }
+  ],
+  "m:rattan": [
+   {
+    "tag": "a:rattan",
+    "lift": 37.88
+   },
+   {
+    "tag": "a:curved",
+    "lift": 5.67
+   },
+   {
+    "tag": "c:beige",
+    "lift": 2.74
+   }
+  ],
+  "m:solid-wood": [
+   {
+    "tag": "a:wood",
+    "lift": 4.67
+   },
+   {
+    "tag": "k:bench",
+    "lift": 3.64
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 2.76
+   },
+   {
+    "tag": "k:side-table",
+    "lift": 2.76
+   },
+   {
+    "tag": "k:dining-table",
+    "lift": 2.58
+   },
+   {
+    "tag": "c:brown",
+    "lift": 2.41
+   },
+   {
+    "tag": "a:textile",
+    "lift": 0.47
+   },
+   {
+    "tag": "c:grey",
+    "lift": 0.52
+   }
+  ],
+  "m:synthetic-textile": [
+   {
+    "tag": "a:cozy",
+    "lift": 6.63
+   },
+   {
+    "tag": "a:textile",
+    "lift": 5
+   },
+   {
+    "tag": "a:neutral",
+    "lift": 4.39
+   },
+   {
+    "tag": "k:rug",
+    "lift": 3.86
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 3.1
+   },
+   {
+    "tag": "k:dining-chair",
+    "lift": 3.01
+   },
+   {
+    "tag": "k:cushion",
+    "lift": 2.85
+   },
+   {
+    "tag": "k:curtain",
+    "lift": 2.66
+   }
+  ],
+  "m:veneer": [
+   {
+    "tag": "a:minimal",
+    "lift": 4.35
+   },
+   {
+    "tag": "k:dining-table",
+    "lift": 3.39
+   },
+   {
+    "tag": "k:drawers",
+    "lift": 3.3
+   },
+   {
+    "tag": "a:wood",
+    "lift": 3.28
+   },
+   {
+    "tag": "a:sleek",
+    "lift": 3.17
+   },
+   {
+    "tag": "a:modern",
+    "lift": 2.95
+   },
+   {
+    "tag": "a:geometric",
+    "lift": 2.74
+   },
+   {
+    "tag": "k:sideboard",
+    "lift": 2.61
+   }
+  ],
+  "m:wool": [
+   {
+    "tag": "m:linen-cotton",
+    "lift": 12.8
+   },
+   {
+    "tag": "k:rug",
+    "lift": 8.63
+   },
+   {
+    "tag": "k:bedding",
+    "lift": 8.2
+   },
+   {
+    "tag": "a:textile",
+    "lift": 3.37
+   }
+  ]
+ },
+ "series": {
+  "AFTONSPARV": [
+   "bedding",
+   "table-lamp"
+  ],
+  "AKTERSPRING": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "ALEX": [
+   "desk",
+   "drawers"
+  ],
+  "ANKARUDDEN": [
+   "drawers",
+   "wardrobe"
+  ],
+  "ARENBOK": [
+   "bedding",
+   "cushion"
+  ],
+  "AULI": [
+   "mirror",
+   "wardrobe"
+  ],
+  "BAGGEBO": [
+   "media-unit",
+   "shelving"
+  ],
+  "BALTSAR": [
+   "armchair",
+   "dining-chair"
+  ],
+  "BARLAST": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "BARNDRÖM": [
+   "bedding",
+   "cushion",
+   "rug"
+  ],
+  "BEKVÄM": [
+   "dining-table",
+   "stool"
+  ],
+  "BERGMUND": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "BERGSHULT": [
+   "bookcase",
+   "shelving"
+  ],
+  "BERGSHYTTAN": [
+   "bench",
+   "dining-table"
+  ],
+  "BESTÅ": [
+   "bookcase",
+   "dining-table",
+   "media-unit",
+   "shelving",
+   "sideboard",
+   "vase"
+  ],
+  "BILLY": [
+   "bookcase",
+   "media-unit",
+   "shelving"
+  ],
+  "BILRESA": [
+   "bookcase",
+   "shelving"
+  ],
+  "BJÖRKGRÅMAL": [
+   "bedding",
+   "cushion"
+  ],
+  "BJÖRKSNÄS": [
+   "bed",
+   "drawers"
+  ],
+  "BJÖRKÅSEN": [
+   "desk",
+   "drawers"
+  ],
+  "BLÅSKATA": [
+   "cushion",
+   "rug"
+  ],
+  "BLÅSVERK": [
+   "pendant",
+   "table-lamp"
+  ],
+  "BOASTAD": [
+   "media-unit",
+   "sideboard"
+  ],
+  "BOAXEL": [
+   "bookcase",
+   "shelving",
+   "wardrobe"
+  ],
+  "BORGEBY": [
+   "coffee-table",
+   "drawers",
+   "side-table"
+  ],
+  "BRIMNES": [
+   "bed",
+   "bedding",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "sofa",
+   "wardrobe"
+  ],
+  "BRISSUND": [
+   "armchair",
+   "sofa"
+  ],
+  "BRUDKRUSBÄR": [
+   "bedding",
+   "cushion"
+  ],
+  "BRYTNING": [
+   "desk",
+   "drawers"
+  ],
+  "BRÄNNBOLL": [
+   "armchair",
+   "desk",
+   "drawers",
+   "side-table",
+   "stool"
+  ],
+  "BUSENKEL": [
+   "cushion",
+   "rug"
+  ],
+  "BÄCKNATE": [
+   "pendant",
+   "table-lamp"
+  ],
+  "BÅRSLÖV": [
+   "armchair",
+   "sofa"
+  ],
+  "DAGGKAPRIFOL": [
+   "frame",
+   "mirror"
+  ],
+  "DAIDAI": [
+   "plant-pot",
+   "vase"
+  ],
+  "DOFTRIPS": [
+   "plant-pot",
+   "vase"
+  ],
+  "DVALA": [
+   "bedding",
+   "cushion"
+  ],
+  "DYTÅG": [
+   "curtain",
+   "cushion"
+  ],
+  "DYVLINGE": [
+   "armchair",
+   "sofa"
+  ],
+  "EDSBRUK": [
+   "frame",
+   "picture"
+  ],
+  "EKENÄSET": [
+   "armchair",
+   "bench",
+   "stool"
+  ],
+  "EKET": [
+   "bookcase",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "side-table",
+   "sideboard"
+  ],
+  "EKHOLMA": [
+   "armchair",
+   "sofa"
+  ],
+  "EKTORP": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "ENHET": [
+   "mirror",
+   "shelving"
+  ],
+  "FAMMARP": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "FEJKA": [
+   "frame",
+   "plant-pot"
+  ],
+  "FISKBO": [
+   "frame",
+   "picture"
+  ],
+  "FJÄDERHARV": [
+   "desk",
+   "drawers",
+   "media-unit"
+  ],
+  "FJÄLLBO": [
+   "desk",
+   "media-unit",
+   "shelving",
+   "sideboard"
+  ],
+  "FLEKKE": [
+   "bed",
+   "sofa"
+  ],
+  "FLISAT": [
+   "bench",
+   "desk"
+  ],
+  "FLYGHÖJD": [
+   "floor-lamp",
+   "table-lamp"
+  ],
+  "FRIDHULT": [
+   "armchair",
+   "sofa"
+  ],
+  "FRIHETEN": [
+   "armchair",
+   "sofa"
+  ],
+  "FRIHULT": [
+   "pendant",
+   "wall-lamp"
+  ],
+  "FRYKSÅS": [
+   "armchair",
+   "desk",
+   "media-unit",
+   "side-table",
+   "stool"
+  ],
+  "FRÖSKELÅS": [
+   "desk",
+   "drawers"
+  ],
+  "FRÖTORP": [
+   "coffee-table",
+   "side-table",
+   "sideboard"
+  ],
+  "FÅGELFJÄLLET": [
+   "bed",
+   "drawers",
+   "wardrobe"
+  ],
+  "GLADOM": [
+   "drawers",
+   "vase"
+  ],
+  "GLAMBERGET": [
+   "armchair",
+   "bed",
+   "wardrobe"
+  ],
+  "GLOSTAD": [
+   "sofa",
+   "stool"
+  ],
+  "GRADVIS": [
+   "plant-pot",
+   "vase"
+  ],
+  "GREJSIMOJS": [
+   "bedding",
+   "bench",
+   "cushion",
+   "pendant",
+   "rug",
+   "table-lamp"
+  ],
+  "GRIMSARBO": [
+   "side-table",
+   "sideboard"
+  ],
+  "GRÄLVIKEN": [
+   "armchair",
+   "sofa"
+  ],
+  "GRÖNFINK": [
+   "bedding",
+   "picture",
+   "throw"
+  ],
+  "GRÖNSTA": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "GRÖTÅN": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "GULDVÄVARE": [
+   "bedding",
+   "cushion",
+   "throw"
+  ],
+  "GULLABERG": [
+   "bed",
+   "bench",
+   "desk",
+   "drawers",
+   "wardrobe"
+  ],
+  "GULLSTRÅLE": [
+   "bedding",
+   "throw"
+  ],
+  "GULLVALLA": [
+   "armchair",
+   "sofa"
+  ],
+  "GUNDE": [
+   "dining-chair",
+   "dining-table",
+   "stool"
+  ],
+  "GURLI": [
+   "bedding",
+   "cushion"
+  ],
+  "GURSKEN": [
+   "drawers",
+   "wardrobe"
+  ],
+  "HADDARP": [
+   "dining-table",
+   "stool"
+  ],
+  "HAUGA": [
+   "bookcase",
+   "dining-chair",
+   "dining-table",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "sideboard",
+   "stool",
+   "wardrobe"
+  ],
+  "HAVBERG": [
+   "armchair",
+   "stool"
+  ],
+  "HAVSTA": [
+   "drawers",
+   "media-unit",
+   "shelving",
+   "sideboard"
+  ],
+  "HEJNE": [
+   "bookcase",
+   "shelving"
+  ],
+  "HEKTAR": [
+   "floor-lamp",
+   "pendant",
+   "wall-lamp"
+  ],
+  "HEMNES": [
+   "armchair",
+   "bedding",
+   "bookcase",
+   "drawers",
+   "media-unit",
+   "mirror",
+   "shelving",
+   "sideboard",
+   "sofa",
+   "vase"
+  ],
+  "HOL": [
+   "coffee-table",
+   "side-table"
+  ],
+  "HOLMERUD": [
+   "coffee-table",
+   "sideboard"
+  ],
+  "HYLLIS": [
+   "bookcase",
+   "plant-pot",
+   "shelving"
+  ],
+  "HYLTARP": [
+   "armchair",
+   "sofa"
+  ],
+  "HÄCKHAGTORN": [
+   "frame",
+   "picture"
+  ],
+  "HÖGVIND": [
+   "pendant",
+   "table-lamp"
+  ],
+  "HÖSTAGILLE": [
+   "candle-holder",
+   "vase"
+  ],
+  "IDANÄS": [
+   "bed",
+   "bookcase",
+   "coffee-table",
+   "drawers",
+   "media-unit",
+   "sideboard",
+   "wardrobe"
+  ],
+  "IDÅSEN": [
+   "desk",
+   "drawers"
+  ],
+  "IKEA PS 2026": [
+   "armchair",
+   "bench",
+   "coffee-table",
+   "cushion",
+   "dining-chair",
+   "dining-table",
+   "drawers",
+   "floor-lamp",
+   "frame",
+   "mirror",
+   "pendant",
+   "rug",
+   "shelving",
+   "side-table",
+   "sofa",
+   "stool",
+   "table-lamp",
+   "throw",
+   "vase"
+  ],
+  "INDIRA": [
+   "bedding",
+   "throw"
+  ],
+  "INNER": [
+   "cushion",
+   "wardrobe"
+  ],
+  "IVAR": [
+   "bookcase",
+   "shelving"
+  ],
+  "IVÖSJÖN": [
+   "mirror",
+   "shelving"
+  ],
+  "JONAXEL": [
+   "drawers",
+   "shelving",
+   "vase",
+   "wardrobe"
+  ],
+  "JÄTTEBO": [
+   "armchair",
+   "sofa"
+  ],
+  "JÄTTESTA": [
+   "media-unit",
+   "side-table"
+  ],
+  "KABBLEKA": [
+   "bookcase",
+   "wardrobe"
+  ],
+  "KABOMBA": [
+   "pendant",
+   "wall-lamp"
+  ],
+  "KALLAX": [
+   "bookcase",
+   "desk",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "sideboard"
+  ],
+  "KIVIK": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "KLEPPSTAD": [
+   "bed",
+   "wardrobe"
+  ],
+  "KLIPPAN": [
+   "armchair",
+   "sofa"
+  ],
+  "KNARREVIK": [
+   "drawers",
+   "sideboard"
+  ],
+  "KNOPPÄNG": [
+   "frame",
+   "picture"
+  ],
+  "KOLBJÖRN": [
+   "bookcase",
+   "shelving"
+  ],
+  "KOMPISHÄNG": [
+   "armchair",
+   "desk",
+   "mirror",
+   "plant-pot",
+   "side-table",
+   "stool"
+  ],
+  "KOMPLEMENT": [
+   "throw",
+   "wardrobe"
+  ],
+  "KONSTRUNDA": [
+   "cushion",
+   "dining-chair",
+   "mirror",
+   "rug",
+   "side-table",
+   "stool",
+   "vase"
+  ],
+  "KORVSNÖRE": [
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "KRAGSTA": [
+   "coffee-table",
+   "side-table"
+  ],
+  "KRAMPHULT": [
+   "armchair",
+   "sofa"
+  ],
+  "KRONÖREN": [
+   "drawers",
+   "wardrobe"
+  ],
+  "KRYLBO": [
+   "armchair",
+   "dining-chair"
+  ],
+  "KUDDLAVA": [
+   "pendant",
+   "table-lamp"
+  ],
+  "KUGGIS": [
+   "media-unit",
+   "wardrobe"
+  ],
+  "KULLABERG": [
+   "desk",
+   "dining-chair"
+  ],
+  "KUSTFYR": [
+   "candle-holder",
+   "cushion",
+   "pendant",
+   "rug",
+   "table-lamp",
+   "throw",
+   "vase"
+  ],
+  "KYRRE": [
+   "dining-chair",
+   "stool"
+  ],
+  "LACK": [
+   "bookcase",
+   "coffee-table",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "side-table"
+  ],
+  "LANDSKRONA": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "LANESUND": [
+   "bookcase",
+   "media-unit",
+   "sideboard"
+  ],
+  "LASTARE": [
+   "drawers",
+   "shelving",
+   "vase",
+   "wardrobe"
+  ],
+  "LEN": [
+   "bedding",
+   "cushion",
+   "rug",
+   "throw"
+  ],
+  "LENAST": [
+   "bedding",
+   "cushion",
+   "throw"
+  ],
+  "LILLEHEM": [
+   "armchair",
+   "side-table",
+   "sofa"
+  ],
+  "LILLESÄTER": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "LISABO": [
+   "desk",
+   "dining-chair",
+   "dining-table"
+  ],
+  "LISTERBY": [
+   "coffee-table",
+   "side-table"
+  ],
+  "LIXHULT": [
+   "drawers",
+   "sideboard"
+  ],
+  "LOMVIKEN": [
+   "frame",
+   "picture"
+  ],
+  "LYCKSELE LÖVÅS": [
+   "armchair",
+   "sofa"
+  ],
+  "LYCKSELE MURBO": [
+   "armchair",
+   "sofa"
+  ],
+  "LYNGÖR": [
+   "bed",
+   "cushion"
+  ],
+  "LÅDMAKARE": [
+   "bookcase",
+   "shelving"
+  ],
+  "MACKAPÄR": [
+   "bench",
+   "shelving",
+   "wardrobe"
+  ],
+  "MALM": [
+   "bed",
+   "desk",
+   "drawers"
+  ],
+  "MALMKÖPING": [
+   "armchair",
+   "sofa"
+  ],
+  "MANNARP": [
+   "armchair",
+   "sofa"
+  ],
+  "MICKE": [
+   "desk",
+   "drawers"
+  ],
+  "MITTZON": [
+   "desk",
+   "plant-pot"
+  ],
+  "MORUM": [
+   "dining-chair",
+   "rug"
+  ],
+  "MOSSLANDA": [
+   "bookcase",
+   "frame",
+   "shelving"
+  ],
+  "MUSKAN": [
+   "bench",
+   "shelving"
+  ],
+  "MÄSTERROT": [
+   "curtain",
+   "cushion"
+  ],
+  "MÄVINN": [
+   "curtain",
+   "cushion",
+   "pendant",
+   "plant-pot",
+   "rug",
+   "vase"
+  ],
+  "MÅLERÅS": [
+   "frame",
+   "picture"
+  ],
+  "MÅRENÄS": [
+   "armchair",
+   "dining-chair",
+   "dining-table"
+  ],
+  "MÖRBYLÅNGA": [
+   "bench",
+   "dining-table"
+  ],
+  "NATTHÄGER": [
+   "bedding",
+   "cushion",
+   "rug"
+  ],
+  "NATTJASMIN": [
+   "bedding",
+   "cushion"
+  ],
+  "NATTSLÄNDA": [
+   "bedding",
+   "cushion"
+  ],
+  "NIPÅSEN": [
+   "bench",
+   "wardrobe"
+  ],
+  "NISSAFORS": [
+   "side-table",
+   "sideboard"
+  ],
+  "NONNEA": [
+   "bedding",
+   "cushion"
+  ],
+  "NORDEN": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "NORDHÄGG": [
+   "bookcase",
+   "frame"
+  ],
+  "NORDKISA": [
+   "drawers",
+   "wardrobe"
+  ],
+  "NORDLI": [
+   "bed",
+   "bench",
+   "drawers",
+   "media-unit"
+  ],
+  "NORDMANSSKÄR": [
+   "armchair",
+   "dining-chair"
+  ],
+  "NORDVIKEN": [
+   "armchair",
+   "dining-chair",
+   "dining-table"
+  ],
+  "NORRMANSÖ": [
+   "bench",
+   "dining-chair"
+  ],
+  "NYHAMN": [
+   "armchair",
+   "sofa"
+  ],
+  "NYMÅNE": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "NYMÖ": [
+   "floor-lamp",
+   "table-lamp"
+  ],
+  "NYPON": [
+   "plant-pot",
+   "vase"
+  ],
+  "NÄMMARÖ": [
+   "armchair",
+   "bench",
+   "dining-chair",
+   "dining-table",
+   "stool"
+  ],
+  "NÄSINGE": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "NÄVLINGE": [
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "ODGER": [
+   "armchair",
+   "dining-chair"
+  ],
+  "OMAR": [
+   "bookcase",
+   "shelving",
+   "throw"
+  ],
+  "OSKARSHAMN": [
+   "armchair",
+   "stool"
+  ],
+  "OXBERG": [
+   "bookcase",
+   "vase"
+  ],
+  "PAX": [
+   "mirror",
+   "shelving",
+   "vase",
+   "wardrobe"
+  ],
+  "PELARKÖRSBÄR": [
+   "curtain",
+   "cushion",
+   "rug"
+  ],
+  "PERJOHAN": [
+   "bench",
+   "dining-chair"
+  ],
+  "PERSIKOTRÄD": [
+   "bedding",
+   "cushion",
+   "rug"
+  ],
+  "PILSKOTT": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "PINNTORP": [
+   "dining-chair",
+   "dining-table",
+   "stool"
+  ],
+  "PJÄTTERYD": [
+   "frame",
+   "picture"
+  ],
+  "PLATSA": [
+   "bench",
+   "drawers",
+   "media-unit",
+   "mirror",
+   "vase",
+   "wardrobe"
+  ],
+  "POÄNG": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "PYNTEN": [
+   "desk",
+   "dining-chair"
+  ],
+  "RAMNEFJÄLL": [
+   "bed",
+   "bedding"
+  ],
+  "RANARP": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "REGNSKUR": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "RIAN": [
+   "side-table",
+   "sideboard"
+  ],
+  "RINGSTA": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "RISHOLMEN": [
+   "armchair",
+   "side-table"
+  ],
+  "ROCKSJÖN": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "RODGERSIA": [
+   "bedding",
+   "cushion"
+  ],
+  "ROSENTORP": [
+   "desk",
+   "dining-chair",
+   "dining-table",
+   "drawers"
+  ],
+  "RULLERUM": [
+   "armchair",
+   "sofa"
+  ],
+  "RÄFFELBJÖRK": [
+   "candle-holder",
+   "vase"
+  ],
+  "RÅDHUSVIN": [
+   "bedding",
+   "throw"
+  ],
+  "RÅDMANSÖ": [
+   "bed",
+   "drawers",
+   "media-unit",
+   "sideboard",
+   "wardrobe"
+  ],
+  "RÅGRUND": [
+   "bench",
+   "shelving"
+  ],
+  "RÖDALM": [
+   "frame",
+   "picture",
+   "vase"
+  ],
+  "RÖDFLIK": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "SALNÖ": [
+   "armchair",
+   "bench",
+   "dining-chair"
+  ],
+  "SALTMYRAN": [
+   "armchair",
+   "sofa"
+  ],
+  "SALTSJÖBADEN": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "SAMBORD": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "SANDARED": [
+   "side-table",
+   "stool"
+  ],
+  "SANDLÖPARE": [
+   "bedding",
+   "rug"
+  ],
+  "SANDMOTT": [
+   "bedding",
+   "cushion"
+  ],
+  "SANDSBERG": [
+   "dining-chair",
+   "dining-table",
+   "stool"
+  ],
+  "SANELA": [
+   "bedding",
+   "curtain",
+   "cushion"
+  ],
+  "SEGERÖN": [
+   "armchair",
+   "dining-chair",
+   "dining-table"
+  ],
+  "SIMRISHAMN": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "SJÖMAKT": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "SKANSNÄS": [
+   "dining-chair",
+   "dining-table",
+   "vase"
+  ],
+  "SKOGSDUVA": [
+   "bedding",
+   "bench",
+   "cushion",
+   "rug"
+  ],
+  "SKOGSFRÄKEN": [
+   "bedding",
+   "throw"
+  ],
+  "SKOGSKOVALL": [
+   "bedding",
+   "throw"
+  ],
+  "SKOGSTA": [
+   "armchair",
+   "dining-chair",
+   "dining-table"
+  ],
+  "SKRUVBY": [
+   "bookcase",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "sideboard"
+  ],
+  "SKURUP": [
+   "pendant",
+   "wall-lamp"
+  ],
+  "SKYTTA": [
+   "mirror",
+   "throw",
+   "vase"
+  ],
+  "SKÅLSTA": [
+   "armchair",
+   "dining-chair",
+   "dining-table"
+  ],
+  "SLÅNHÖSTMAL": [
+   "bedding",
+   "curtain",
+   "cushion"
+  ],
+  "SMYGA": [
+   "bed",
+   "desk"
+  ],
+  "SMÅGÖRA": [
+   "bed",
+   "desk",
+   "shelving",
+   "wardrobe"
+  ],
+  "SMÅSTAD": [
+   "bed",
+   "desk",
+   "drawers",
+   "vase",
+   "wardrobe"
+  ],
+  "SOLFIBBLA": [
+   "bedding",
+   "cushion"
+  ],
+  "SOLKLINT": [
+   "pendant",
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "SOLUPPGÅNG": [
+   "candle-holder",
+   "stool"
+  ],
+  "SOLVINDEN": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "SPIKSMED": [
+   "media-unit",
+   "sideboard"
+  ],
+  "STARKVIND": [
+   "side-table",
+   "sideboard"
+  ],
+  "STEGESUND": [
+   "bench",
+   "shelving"
+  ],
+  "STOCKHOLM 2025": [
+   "armchair",
+   "bench",
+   "candle-holder",
+   "coffee-table",
+   "curtain",
+   "cushion",
+   "dining-chair",
+   "dining-table",
+   "floor-lamp",
+   "media-unit",
+   "mirror",
+   "pendant",
+   "rug",
+   "shelving",
+   "side-table",
+   "sideboard",
+   "sofa",
+   "stool",
+   "table-lamp",
+   "throw",
+   "vase"
+  ],
+  "STOCKHOLM": [
+   "coffee-table",
+   "dining-chair",
+   "mirror",
+   "rug",
+   "sofa"
+  ],
+  "STOREDAMM": [
+   "shelving",
+   "stool"
+  ],
+  "STORKLINTA": [
+   "bed",
+   "drawers",
+   "media-unit"
+  ],
+  "STRANDAD": [
+   "floor-lamp",
+   "table-lamp"
+  ],
+  "STRANDMOLKE": [
+   "bedding",
+   "throw"
+  ],
+  "STRANDMON": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "STRÅLA": [
+   "floor-lamp",
+   "pendant"
+  ],
+  "SUNDVIK": [
+   "bed",
+   "drawers",
+   "wardrobe"
+  ],
+  "SÖDERHAMN": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "SÖRVALLEN": [
+   "sofa",
+   "stool"
+  ],
+  "TARSELE": [
+   "coffee-table",
+   "dining-table"
+  ],
+  "TINGBY": [
+   "side-table",
+   "sideboard"
+  ],
+  "TOLKNING": [
+   "bench",
+   "drawers",
+   "stool"
+  ],
+  "TONSTAD": [
+   "bed",
+   "bookcase",
+   "coffee-table",
+   "desk",
+   "dining-chair",
+   "dining-table",
+   "drawers",
+   "media-unit",
+   "shelving",
+   "side-table",
+   "sideboard",
+   "wardrobe"
+  ],
+  "TORSJÖ": [
+   "coffee-table",
+   "side-table"
+  ],
+  "TOSSBERG": [
+   "desk",
+   "dining-chair"
+  ],
+  "TRANERED": [
+   "coffee-table",
+   "side-table"
+  ],
+  "TRIXIG": [
+   "curtain",
+   "throw"
+  ],
+  "TROFAST": [
+   "shelving",
+   "vase"
+  ],
+  "TROTTEN": [
+   "desk",
+   "drawers",
+   "media-unit"
+  ],
+  "TYSSEDAL": [
+   "bed",
+   "drawers",
+   "vase"
+  ],
+  "TÄRNÖ": [
+   "dining-chair",
+   "stool"
+  ],
+  "TÅNEBRO": [
+   "drawers",
+   "side-table",
+   "vase"
+  ],
+  "UGGLERUM": [
+   "coffee-table",
+   "side-table"
+  ],
+  "UPPLID": [
+   "pendant",
+   "wall-lamp"
+  ],
+  "UPPÅKRA": [
+   "armchair",
+   "sofa",
+   "stool"
+  ],
+  "VALLKRASSING": [
+   "bedding",
+   "cushion"
+  ],
+  "VALNÄS": [
+   "coffee-table",
+   "side-table",
+   "sofa",
+   "stool"
+  ],
+  "VARMBLIXT": [
+   "pendant",
+   "wall-lamp"
+  ],
+  "VARPTROSS": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "VIHALS": [
+   "bed",
+   "dining-chair",
+   "dining-table",
+   "drawers",
+   "media-unit",
+   "mirror",
+   "shelving",
+   "sideboard",
+   "sofa",
+   "wardrobe"
+  ],
+  "VILDPERSILJA": [
+   "curtain",
+   "cushion"
+  ],
+  "VILTO": [
+   "bench",
+   "shelving",
+   "wardrobe"
+  ],
+  "VIMLE": [
+   "armchair",
+   "sofa",
+   "stool",
+   "throw"
+  ],
+  "VINDKAST": [
+   "floor-lamp",
+   "pendant",
+   "table-lamp"
+  ],
+  "VINTERFINT": [
+   "candle-holder",
+   "cushion",
+   "plant-pot",
+   "rug"
+  ],
+  "VISKAFORS": [
+   "armchair",
+   "sofa"
+  ],
+  "VISTHUS": [
+   "drawers",
+   "wardrobe"
+  ],
+  "VITTSJÖ": [
+   "bookcase",
+   "coffee-table",
+   "desk",
+   "drawers",
+   "shelving",
+   "side-table",
+   "sideboard"
+  ],
+  "VOXLÖV": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "VRETSTORP": [
+   "armchair",
+   "sofa"
+  ],
+  "YXSTABY": [
+   "cushion",
+   "media-unit",
+   "side-table",
+   "stool"
+  ],
+  "ÄLSKVÄRD": [
+   "bed",
+   "bedding",
+   "drawers"
+  ],
+  "ÄLVDALEN": [
+   "armchair",
+   "sofa"
+  ],
+  "ÄMMARYD": [
+   "coffee-table",
+   "side-table",
+   "sideboard"
+  ],
+  "ÄNGSKORN": [
+   "bedding",
+   "cushion"
+  ],
+  "ÅLHULT": [
+   "dining-chair",
+   "dining-table"
+  ],
+  "ÅRSTID": [
+   "floor-lamp",
+   "table-lamp",
+   "wall-lamp"
+  ],
+  "ÖSTAVALL": [
+   "coffee-table",
+   "side-table"
+  ]
+ }
+}

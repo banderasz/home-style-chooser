@@ -23,6 +23,8 @@ async function loadEngine() {
     'taxonomy.mjs': 'src/data/taxonomy.ts',
     'quiz.mjs': 'src/engine/quiz.ts',
     'infinite.mjs': 'src/engine/infinite.ts',
+    'product-taxonomy.mjs': 'src/data/product-taxonomy.ts',
+    'products.mjs': 'src/engine/products.ts',
   }
   for (const [out, src] of Object.entries(sources)) {
     const code = await readFile(join(ROOT, src), 'utf8')
@@ -32,12 +34,18 @@ async function loadEngine() {
     // Flatten the import paths: all files sit side by side in the temp dir.
     await writeFile(
       join(dir, out),
-      js.replace("'../data/taxonomy'", "'./taxonomy.mjs'").replace("'./quiz'", "'./quiz.mjs'"),
+      js
+        .replace("'../data/taxonomy'", "'./taxonomy.mjs'")
+        .replace("'../data/product-taxonomy'", "'./product-taxonomy.mjs'")
+        .replace("'../data/products'", "'./product-taxonomy.mjs'")
+        .replace("'./infinite'", "'./infinite.mjs'")
+        .replace("'./quiz'", "'./quiz.mjs'"),
     )
   }
   const mod = await import(pathToFileURL(join(dir, 'quiz.mjs')).href)
   const infinite = await import(pathToFileURL(join(dir, 'infinite.mjs')).href)
-  return { mod, infinite, cleanup: () => rm(dir, { recursive: true, force: true }) }
+  const products = await import(pathToFileURL(join(dir, 'products.mjs')).href)
+  return { mod, infinite, products, cleanup: () => rm(dir, { recursive: true, force: true }) }
 }
 
 function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
@@ -67,7 +75,7 @@ function syntheticPool(styles, perStyle = 12, attributesFor = () => []) {
 const tests = []
 const test = (name, fn) => tests.push([name, fn])
 
-const { mod: E, infinite: I, cleanup } = await loadEngine()
+const { mod: E, infinite: I, products: P, cleanup } = await loadEngine()
 const { STYLES } = await import(
   pathToFileURL(join(ROOT, 'scripts', 'taxonomy.mjs')).href
 )
@@ -625,6 +633,168 @@ test('a corrupt saved session degrades instead of throwing', () => {
     'bad entries were not filtered',
   )
   assert.deepEqual(restored.skipped, [])
+})
+
+
+// ---------------------------------------------------------------------------
+// Product mode
+// ---------------------------------------------------------------------------
+
+/** A tiny catalog with deliberate structure: oak things are beige, metal things black. */
+function productPool() {
+  const out = []
+  const kinds = [
+    ['sofa', 'solid-wood', 'beige', ['curved']],
+    ['armchair', 'solid-wood', 'beige', ['curved']],
+    ['coffee-table', 'solid-wood', 'brown', ['curved']],
+    ['floor-lamp', 'metal', 'black', ['sleek']],
+    ['pendant', 'metal', 'black', ['sleek']],
+    ['desk', 'metal', 'grey', ['sleek']],
+  ]
+  for (const [category, material, colour, attributes] of kinds) {
+    for (let i = 0; i < 8; i++) {
+      out.push({
+        id: `${category}-${i}`,
+        itemNoGlobal: `${category}${i}`,
+        retailer: 'ikea',
+        market: 'at',
+        name: i === 0 ? 'SERIESX' : `${category.toUpperCase()}${i}`,
+        typeLabel: category,
+        url: `https://example.test/${category}-${i}`,
+        image: `https://example.test/${category}-${i}.jpg`,
+        imageIsContext: true,
+        cutout: null,
+        price: { amount: 100 + i, currency: 'EUR' },
+        rating: null,
+        categories: [category],
+        materials: [material],
+        colours: [colour],
+        attributes,
+      })
+    }
+  }
+  return out
+}
+
+const PRODUCTS = productPool()
+
+/** Judge every product in the little catalog, liking the ones `likes` selects. */
+function swipeProducts(state, likes) {
+  let s = state
+  for (const p of PRODUCTS) s = I.setVerdict(s, p.id, likes(p) ? 'like' : 'dislike')
+  return s
+}
+
+test('product scoring separates the axis the user actually cared about', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  s = swipeProducts(s, (p) => p.materials.includes('solid-wood'))
+
+  const materials = P.scoreMaterials(s)
+  assert.equal(materials[0].tagId, 'solid-wood', 'wood should top the material axis')
+  assert.ok(
+    materials.find((m) => m.tagId === 'metal').rate < 0.4,
+    'metal should be clearly rejected',
+  )
+  const colours = P.scoreColours(s)
+  assert.equal(colours[0].tagId, 'beige', 'beige rides along with wood in this catalog')
+})
+
+test('room-only adjectives never reach the product attribute ranking', () => {
+  let s = P.createProductDeck(
+    PRODUCTS.map((p) => ({ ...p, attributes: [...p.attributes, 'daylight', 'spacious'] })),
+    1,
+  )
+  s = I.setVerdict(s, PRODUCTS[0].id, 'like')
+  const ids = P.scoreProductAttributes(s).map((a) => a.tagId)
+  assert.ok(!ids.includes('daylight'), 'daylight is not a property of an object')
+  assert.ok(!ids.includes('spacious'), 'spacious is not a property of an object')
+})
+
+test('recommendations stay quiet until there is evidence', () => {
+  const s = P.createProductDeck(PRODUCTS, 1)
+  assert.deepEqual(P.recommend(s, null, 5), [], 'no answers must mean no recommendations')
+})
+
+test('recommendations favour what was liked and never repeat a judged product', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  // Judge only the lamps, liking the metal ones.
+  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'floor-lamp')) {
+    s = I.setVerdict(s, p.id, 'like')
+  }
+  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'sofa')) {
+    s = I.setVerdict(s, p.id, 'dislike')
+  }
+
+  const picks = P.recommend(s, null, 6)
+  assert.ok(picks.length > 0, 'expected recommendations')
+
+  const judged = new Set(s.answers.map((a) => a.imageId))
+  assert.ok(
+    picks.every((r) => !judged.has(r.product.id)),
+    'a recommendation must never be something already judged',
+  )
+  assert.ok(
+    picks.filter((r) => r.product.materials.includes('metal')).length >
+      picks.filter((r) => r.product.materials.includes('solid-wood')).length,
+    'metal was liked and wood rejected, so metal should dominate',
+  )
+  assert.ok(
+    picks.every((r) => r.reasons.length > 0),
+    'every recommendation must be able to explain itself',
+  )
+})
+
+test('recommendations are spread across categories rather than one repeated lane', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  for (const p of PRODUCTS.filter((x) => x.materials.includes('metal')).slice(0, 4)) {
+    s = I.setVerdict(s, p.id, 'like')
+  }
+  for (const p of PRODUCTS.filter((x) => x.materials.includes('solid-wood')).slice(0, 4)) {
+    s = I.setVerdict(s, p.id, 'dislike')
+  }
+  const picks = P.recommend(s, null, 6)
+  const lanes = new Set(picks.map((r) => r.product.categories[0]))
+  assert.ok(lanes.size >= 2, `expected more than one category, got ${[...lanes].join(',')}`)
+})
+
+test('affinity lends a preference to tags the session never saw', () => {
+  // Judge only lamps, so `solid-wood` is never seen directly.
+  let s = P.createProductDeck(PRODUCTS, 1)
+  for (const p of PRODUCTS.filter((x) => x.categories[0] === 'floor-lamp')) {
+    s = I.setVerdict(s, p.id, 'like')
+  }
+  const affinity = {
+    items: 48,
+    // Declare rattan a close neighbour of metal, though no product carries it.
+    neighbours: { 'm:rattan': [{ tag: 'm:metal', lift: 6 }] },
+    series: {},
+  }
+  const withStructure = P.recommend(
+    { ...s, pool: [...PRODUCTS, { ...PRODUCTS[0], id: 'wildcard', materials: ['rattan'], colours: [], categories: ['stool'], attributes: [] }] },
+    affinity,
+    40,
+  )
+  const wildcard = withStructure.find((r) => r.product.id === 'wildcard')
+  assert.ok(wildcard, 'a product tagged only with an inferred tag should still be scored')
+  assert.ok(wildcard.score > 0, 'inferred from a liked neighbour, it should score positively')
+  assert.ok(
+    wildcard.reasons.some((r) => !r.direct),
+    'the reason should be marked as inferred, not measured',
+  )
+})
+
+test('a liked series pulls its siblings up', () => {
+  let s = P.createProductDeck(PRODUCTS, 1)
+  // SERIESX is index 0 of every category. Like one, judge nothing else.
+  s = I.setVerdict(s, 'floor-lamp-0', 'like')
+  const picks = P.recommend(s, null, 40)
+  const sibling = picks.find((r) => r.product.id === 'pendant-0')
+  const other = picks.find((r) => r.product.id === 'pendant-1')
+  assert.ok(sibling && other, 'both pendants should be candidates')
+  assert.ok(
+    sibling.score > other.score,
+    'the SERIESX sibling should outrank an otherwise identical non-sibling',
+  )
 })
 
 let failed = 0

@@ -168,13 +168,20 @@ export interface Attribute {
   label: string
   group: string
   opposite?: string
+  /**
+   * Whether the adjective can describe a single object as well as a whole room. The
+   * product mode scores only adjectives a product can actually express: a sofa is never
+   * `spacious` or `daylight`-filled, and ranking those would put noise at the top of its
+   * results screen. Absent means `'both'`, so the room quiz is unaffected either way.
+   */
+  appliesTo?: 'room' | 'both'
 }
 
 export const ATTRIBUTES: Attribute[] = [
-  { id: 'bright', label: 'Bright', group: 'Light', opposite: 'dark' },
-  { id: 'daylight', label: 'Full of daylight', group: 'Light' },
+  { id: 'bright', label: 'Bright', group: 'Light', opposite: 'dark', appliesTo: 'room' },
+  { id: 'daylight', label: 'Full of daylight', group: 'Light', appliesTo: 'room' },
   { id: 'dark', label: 'Dark', group: 'Light', opposite: 'bright' },
-  { id: 'warmlight', label: 'Warm lighting', group: 'Light' },
+  { id: 'warmlight', label: 'Warm lighting', group: 'Light', appliesTo: 'room' },
 
   { id: 'white', label: 'White', group: 'Colour', opposite: 'colourful' },
   { id: 'neutral', label: 'Neutral', group: 'Colour', opposite: 'colourful' },
@@ -187,11 +194,11 @@ export const ATTRIBUTES: Attribute[] = [
 
   { id: 'wood', label: 'Wooden', group: 'Material' },
   { id: 'stone', label: 'Stone & marble', group: 'Material' },
-  { id: 'concrete', label: 'Concrete', group: 'Material' },
+  { id: 'concrete', label: 'Concrete', group: 'Material', appliesTo: 'room' },
   { id: 'metal', label: 'Metal & brass', group: 'Material' },
   { id: 'glass', label: 'Glass & mirror', group: 'Material' },
-  { id: 'brick', label: 'Brick', group: 'Material' },
-  { id: 'tile', label: 'Tiled', group: 'Material' },
+  { id: 'brick', label: 'Brick', group: 'Material', appliesTo: 'room' },
+  { id: 'tile', label: 'Tiled', group: 'Material', appliesTo: 'room' },
   { id: 'textile', label: 'Soft textiles', group: 'Material' },
   { id: 'leather', label: 'Leather', group: 'Material' },
   { id: 'rattan', label: 'Rattan & woven', group: 'Material' },
@@ -205,7 +212,7 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'livedin', label: 'Lived-in', group: 'Mood' },
 
   { id: 'minimal', label: 'Minimal', group: 'Space', opposite: 'layered' },
-  { id: 'spacious', label: 'Spacious', group: 'Space', opposite: 'compact' },
+  { id: 'spacious', label: 'Spacious', group: 'Space', opposite: 'compact', appliesTo: 'room' },
   { id: 'compact', label: 'Compact', group: 'Space', opposite: 'spacious' },
   { id: 'layered', label: 'Layered & full', group: 'Space', opposite: 'minimal' },
 
@@ -217,7 +224,7 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'artsy', label: 'Art-filled', group: 'Character' },
 
   { id: 'plants', label: 'Plant-filled', group: 'Nature' },
-  { id: 'view', label: 'Good view', group: 'Nature' },
+  { id: 'view', label: 'Good view', group: 'Nature', appliesTo: 'room' },
 
   { id: 'curved', label: 'Curved', group: 'Form', opposite: 'geometric' },
   { id: 'geometric', label: 'Geometric', group: 'Form', opposite: 'curved' },
@@ -226,6 +233,12 @@ export const ATTRIBUTES: Attribute[] = [
 ]
 
 export const ATTRIBUTE_BY_ID = new Map(ATTRIBUTES.map((a) => [a.id, a]))
+
+/** The adjectives an object can be. See `Attribute.appliesTo`. */
+export const PRODUCT_ATTRIBUTE_IDS = ATTRIBUTES.filter((a) => a.appliesTo !== 'room').map(
+  (a) => a.id,
+)
+
 export const attributeLabel = (id: string) => ATTRIBUTE_BY_ID.get(id)?.label ?? id
 
 /** Group order for the results screen. */
