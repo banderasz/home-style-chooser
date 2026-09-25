@@ -351,15 +351,22 @@ that are **identical in every market** (`10003` is beige in `at/de`, `hu/hu` and
 alike), plus per-product price, rating, a white-background cutout, and a set of
 photographs.
 
-**Every card shows the product in a room.** A cutout on white is a catalogue listing, not
-something you can have an opinion about, so the harvester walks a preference chain —
-`CONTEXT` (the staged interior), then `INSPIRATIONAL`, then `FUNCTIONAL`, then
-`NON_STANDARDIZED`, then a colour variant's own contextual shot — and **drops the product
-entirely** if none of them exist. `FUNCTIONAL` sounds like a diagram but isn't: IKEA
-writes things like *"Framed black-and-white photo near green plant and stacked
-magazines"*. `MAIN` (the cutout) and `QUALITY` (a close-up of the weave) are never used as
-the card image; the cutout is kept only for list thumbnails, where a room shot at 54px is
-an unreadable smudge. `--allow-cutouts` keeps the dropped products if you want them.
+**Cards show the product in a room wherever IKEA has such a photo**, because a cutout on
+white is a catalogue listing rather than something you can have an opinion about. The
+harvester walks a preference chain: `CONTEXT` (the staged interior) and `INSPIRATIONAL`
+are always rooms; `FUNCTIONAL` and `NON_STANDARDIZED` usually are but not always, so their
+alt text is read; then a colour variant's own contextual shot; then the cutout. `MAIN` and
+`QUALITY` (a close-up of the weave) are never the card image, though the cutout is kept
+for list thumbnails, where a room shot at 54px is an unreadable smudge.
+
+Reading the alt text matters more than it sounds. For a picture frame, `FUNCTIONAL` is
+*"Gerahmtes Schwarz-Weiß-Foto in der Nähe einer grünen Pflanze"* — a room. For MELLANSEL
+it is *"Tischverlängerungsmechanismus aus Holz sichtbar. Zeigt Metallschienen"* — the
+extension mechanism, on white. An earlier version took the type at face value and shipped
+those as "in-room" at a claimed 100%. Two tests fail if that returns: one on close-up
+markers, one on the subtler case of an alt text that is only the product's own name
+(`"SALTSJÖBADEN 2er-Sofa, Fridtuna hellbeige"`), which is a plain product shot filed under
+a room-ish type.
 
 The harvest runs in three passes:
 

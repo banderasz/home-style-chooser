@@ -58,9 +58,6 @@ const DRY = has('dry')
 // Skip the per-facet queries and tag colour/material from text alone. Turns a ~10 minute
 // run into a ~1 minute one at the cost of recall — useful while iterating on terms.
 const NO_FACETS = has('no-facets')
-// Keep products that only have a white-background cutout. Off by default: every card
-// should show the thing in a room, which is what a swipe is actually judging.
-const ALLOW_CUTOUTS = has('allow-cutouts')
 // Politeness delay between requests. This is someone else's storefront.
 const DELAY = Number(flag('delay', 400))
 
@@ -123,47 +120,88 @@ const imageOfType = (product, type) =>
   (product.allProductImage ?? []).find((i) => i.type === type)
 
 /**
- * Image types that show the product **in a room**, best first.
- *
- * `CONTEXT` is the staged interior shot and the obvious first choice. `INSPIRATIONAL` is
- * rarer and just as good. `FUNCTIONAL` sounds like a diagram but isn't — IKEA writes
- * things like "Framed black-and-white photo near green plant and stacked magazines" —
- * it's a room shot that happens to demonstrate use. `NON_STANDARDIZED` is the ragged end
- * of the same idea and comes last.
- *
- * Deliberately absent: `MAIN` (the white-background cutout) and `QUALITY` (a close-up of
- * the fabric or the joint). Neither tells you what the thing looks like in a home, which
- * is the only question a swipe is asking.
+ * Image types that always show the product in a room.
  */
-const IN_ROOM_TYPES = [
-  'CONTEXT_PRODUCT_IMAGE',
-  'INSPIRATIONAL_IMAGE',
-  'FUNCTIONAL_PRODUCT_IMAGE',
-  'NON_STANDARDIZED_PRODUCT_IMAGE',
+const ALWAYS_IN_ROOM = ['CONTEXT_PRODUCT_IMAGE', 'INSPIRATIONAL_IMAGE']
+
+/**
+ * Types that *usually* show a room but sometimes don't, so their alt text gets read.
+ *
+ * `FUNCTIONAL` is the interesting one. For a picture frame it is a room shot —
+ * "Gerahmtes Schwarz-Weiß-Foto in der Nähe einer grünen Pflanze" — but for MELLANSEL it
+ * is "Tischverlängerungsmechanismus aus Holz sichtbar. Zeigt Metallschienen", a close-up
+ * of the extension mechanism on white. An earlier version took the type at face value and
+ * shipped those as "in-room".
+ */
+const MAYBE_IN_ROOM = ['FUNCTIONAL_PRODUCT_IMAGE', 'NON_STANDARDIZED_PRODUCT_IMAGE']
+
+/** Words that mean the photo is about a part, not a place. */
+const CLOSE_UP_MARKERS = [
+  'mechanism', 'mechanismus', 'mechanizmus',
+  'close-up', 'closeup', 'nahaufnahme', 'közelkép',
+  'underside', 'unterseite', 'alsó',
+  'cross-section', 'querschnitt', 'keresztmetszet',
+  'assembly', 'montage', 'összeszerel',
+  'detail of', 'detailansicht',
 ]
+
+const WORD = /[^a-z0-9äöüßáéíóöőúüű]+/
+
+/**
+ * Does this alt text describe a scene rather than just name the product?
+ *
+ * Two ways it can fail. The obvious one is a close-up marker. The subtler one is an alt
+ * text that is only the product's own identity — "SALTSJÖBADEN 2er-Sofa, Fridtuna
+ * hellbeige" — which is a plain product shot that happens to be filed as FUNCTIONAL. So
+ * the product's own name, type and design text are subtracted, and what remains has to
+ * be substantial enough to be describing something else in the frame.
+ */
+function looksLikeRoom(altText, product) {
+  if (!altText) return false
+  const lower = altText.toLowerCase()
+  if (CLOSE_UP_MARKERS.some((w) => lower.includes(w))) return false
+
+  const own = new Set(
+    [product.name, product.typeName, product.validDesignText]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .split(WORD)
+      .filter(Boolean),
+  )
+  const rest = lower.split(WORD).filter((w) => w.length > 2 && !own.has(w))
+  return rest.length >= 3
+}
 
 /**
  * The card image, and the cutout kept alongside it for thumbnails.
  *
- * Returns `image: null` when the product has no in-room photograph anywhere — including
- * on its colour variants, which often carry one when the parent doesn't. The caller drops
- * those products: a wall of white-background cutouts is a catalogue listing, not a
- * question about taste.
+ * `imageKind` is null when the product has no photograph of itself in a home anywhere,
+ * including on its colour variants. Those products are still harvested — a white cutout
+ * is a poor card but it beats not offering the product at all — and the UI frames them
+ * differently. The harvest report says how many there are.
  */
 function pickImage(product) {
   const cutout = product.mainImageUrl ?? imageOfType(product, 'MAIN_PRODUCT_IMAGE')?.url ?? null
 
-  for (const type of IN_ROOM_TYPES) {
+  for (const type of ALWAYS_IN_ROOM) {
     const hit = imageOfType(product, type)
     if (hit?.url) return { image: hit.url, imageKind: type, cutout }
   }
 
+  for (const type of MAYBE_IN_ROOM) {
+    const hit = (product.allProductImage ?? []).find(
+      (i) => i.type === type && i.url && looksLikeRoom(i.altText, product),
+    )
+    if (hit) return { image: hit.url, imageKind: type, cutout }
+  }
+
   // A variant in another colourway is still the same design in a real room. Better than
-  // losing the product, even though the cushion cover in the photo may be a shade off.
+  // a cutout, even though the fabric in the photo may be a shade off.
   const variant = (product.gprDescription?.variants ?? []).find((v) => v.contextualImageUrl)
   if (variant) return { image: variant.contextualImageUrl, imageKind: 'VARIANT_CONTEXT', cutout }
 
-  return { image: null, imageKind: null, cutout }
+  return { image: cutout, imageKind: null, cutout }
 }
 
 /**
@@ -366,11 +404,8 @@ async function marketPass(market, category, reference) {
   for (const p of items) {
     if (!p.pipUrl || !p.itemNoGlobal) continue
     const { image, imageKind, cutout } = pickImage(p)
-    if (!image) {
-      // No photograph of it in a home anywhere in its image set.
-      noRoomShot++
-      if (!ALLOW_CUTOUTS) continue
-    }
+    if (!image) continue // nothing to show at all
+    if (!imageKind) noRoomShot++
 
     const ref = reference.byItem.get(p.itemNoGlobal)
     // Only the design text is read for colour: the alt text describes the whole staged
@@ -408,7 +443,7 @@ async function marketPass(market, category, reference) {
       name: p.name ?? '',
       typeLabel: p.typeName ?? '',
       url: p.pipUrl,
-      image: image ?? cutout,
+      image,
       imageKind,
       cutout,
       price: priceOf(p),
@@ -522,7 +557,7 @@ async function main() {
       log(
         `${category.id.padEnd(14)} ${market.id}  ${String(out.length).padStart(3)} kept` +
           ` / ${String(total).padStart(4)} matched` +
-          `${noRoomShot ? ` · ${noRoomShot} no room shot` : ''}` +
+          `${noRoomShot ? ` · ${noRoomShot} cutout` : ''}` +
           `   ref ${reference.byItem.size} (${tagged} coloured)`,
       )
       await flush(byId, completed)
@@ -546,12 +581,7 @@ async function main() {
         .map(([k, n]) => `${k.replace('_PRODUCT_IMAGE', '').toLowerCase()} ${n}`)
         .join(', ')})`,
   )
-  if (droppedNoRoom > 0) {
-    log(
-      `  dropped ${droppedNoRoom} with no room photo` +
-        `${ALLOW_CUTOUTS ? ' (kept anyway: --allow-cutouts)' : ''}`,
-    )
-  }
+  if (droppedNoRoom > 0) log(`  ${droppedNoRoom} show a cutout — no room photo exists`)
 
   const thin = PRODUCT_CATEGORIES.map((c) => [
     c.id,
@@ -560,9 +590,10 @@ async function main() {
   if (thin.length) log(`  thin categories: ${thin.map(([id, n]) => `${id}(${n})`).join(', ')}`)
 }
 
-// Only harvest when run as a script. Exported so the merge rule above — the one that
-// silently cost a whole category last time it was wrong — can be asserted in the tests.
-export { merge }
+// Only harvest when run as a script. The exports are the rules that have silently cost
+// real data when wrong — a whole category, and a deckful of white-background cards — so
+// they are asserted in the tests rather than trusted.
+export { merge, looksLikeRoom, pickImage }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {

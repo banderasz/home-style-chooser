@@ -38,9 +38,10 @@ export default function ProductCard({
       aria-hidden={!interactive}
     >
       <img
-        // Always a room shot, so always `cover`. The cutout class exists only for the
-        // error path below, where a dead URL is swapped for the white-background copy.
-        className="card__image"
+        // A room shot fills the card; a cutout is a product floating on white and needs
+        // `contain` or its legs get cropped. `imageKind` is null only when IKEA has no
+        // photograph of the product in a home anywhere.
+        className={`card__image${product.imageKind ? '' : ' card__image--cutout'}`}
         src={product.image}
         alt={`${product.name} ${product.typeLabel}`}
         draggable={false}

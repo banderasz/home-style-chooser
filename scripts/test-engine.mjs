@@ -438,6 +438,95 @@ test('a product found by two category queries keeps both categories', async () =
   assert.equal(merge(undefined, second), second, 'the first sighting passes straight through')
 })
 
+test('a mechanism close-up is not mistaken for a room shot', async () => {
+  const { looksLikeRoom } = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'harvest-products.mjs')).href
+  )
+  const mellansel = {
+    name: 'MELLANSEL',
+    typeName: 'Ausziehtisch',
+    validDesignText: 'Eichenfurnier',
+  }
+  // Real alt text from MELLANSEL's FUNCTIONAL images — both are the product on white.
+  assert.equal(
+    looksLikeRoom(
+      'Tischverlängerungsmechanismus aus Holz sichtbar. Zeigt Metallschienen und Holzblätter zur Verlängerung.',
+      mellansel,
+    ),
+    false,
+    'an extension mechanism is a part, not a place',
+  )
+  assert.equal(
+    looksLikeRoom(
+      'Die Unterseite eines ausziehbaren Esstisches mit Metallkufen, die den Funktionsmechanismus veranschaulicht.',
+      mellansel,
+    ),
+    false,
+    'the underside is a part, not a place',
+  )
+  // Real alt text from a picture frame's FUNCTIONAL image — this one genuinely is a room.
+  assert.equal(
+    looksLikeRoom(
+      'Gerahmtes Schwarz-Weiß-Foto in der Nähe einer grünen Pflanze und gestapelter Zeitschriften.',
+      { name: 'LOMVIKEN', typeName: 'Rahmen', validDesignText: 'schwarz' },
+    ),
+    true,
+  )
+})
+
+test('an alt text that only names the product is not a room shot', async () => {
+  const { looksLikeRoom } = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'harvest-products.mjs')).href
+  )
+  // The subtler failure: a plain product shot filed as FUNCTIONAL, whose alt text is the
+  // product's own label and nothing else.
+  const sofa = {
+    name: 'SALTSJÖBADEN',
+    typeName: '2er-Sofa',
+    validDesignText: 'Fridtuna hellbeige',
+  }
+  assert.equal(looksLikeRoom('SALTSJÖBADEN 2er-Sofa, Fridtuna hellbeige', sofa), false)
+  assert.equal(
+    looksLikeRoom(
+      'Beige SALTSJÖBADEN Sofa mit schwarzer Stehlampe, gemütlicher Decke und Couchtisch.',
+      sofa,
+    ),
+    true,
+    'the same product, described with the rest of the room in frame',
+  )
+  assert.equal(looksLikeRoom('', sofa), false)
+  assert.equal(looksLikeRoom(null, sofa), false)
+})
+
+test('the image chain prefers a room, then a variant, then the cutout', async () => {
+  const { pickImage } = await import(
+    pathToFileURL(join(ROOT, 'scripts', 'harvest-products.mjs')).href
+  )
+  const base = { name: 'X', typeName: 'Chair', mainImageUrl: 'cutout.jpg' }
+  const room = { type: 'CONTEXT_PRODUCT_IMAGE', url: 'room.jpg', altText: 'a room' }
+  const mech = {
+    type: 'FUNCTIONAL_PRODUCT_IMAGE',
+    url: 'mech.jpg',
+    altText: 'Nahaufnahme des Mechanismus',
+  }
+
+  assert.equal(pickImage({ ...base, allProductImage: [room, mech] }).image, 'room.jpg')
+
+  // Only a mechanism shot: skip it and fall to the variant's contextual photo.
+  const withVariant = pickImage({
+    ...base,
+    allProductImage: [mech],
+    gprDescription: { variants: [{ contextualImageUrl: 'variant.jpg' }] },
+  })
+  assert.equal(withVariant.image, 'variant.jpg')
+  assert.equal(withVariant.imageKind, 'VARIANT_CONTEXT')
+
+  // Nothing usable anywhere: the cutout, flagged as such so the UI can frame it.
+  const bare = pickImage({ ...base, allProductImage: [mech] })
+  assert.equal(bare.image, 'cutout.jpg')
+  assert.equal(bare.imageKind, null)
+})
+
 test('the lexicon matches whole words only', () => {
   // The classic false positives: "art" inside "apartment", "cane" inside "hurricane".
   assert.ok(!tagsFor('a modern apartment').includes('artsy'))

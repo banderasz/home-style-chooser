@@ -27,12 +27,12 @@ export interface Product {
   /** The product page, in the right market. */
   url: string
   /**
-   * The card image. Always the product photographed in a room — a white-background
-   * cutout is a catalogue listing, not something you can have an opinion about. Products
-   * with no room photograph anywhere in their image set are not harvested.
+   * The card image: the product photographed in a home wherever IKEA has such a shot,
+   * because that is what a swipe is actually judging. A minority have none anywhere and
+   * fall back to the white-background cutout.
    */
   image: string
-  /** Which IKEA image type it came from, for auditing the catalog. */
+  /** The IKEA image type it came from, or null when it is the cutout. */
   imageKind: string | null
   /** The white-background shot. Always present; used as the thumbnail. */
   cutout: string | null
