@@ -348,8 +348,18 @@ GET sik.search.blue.cdtapps.com/{market}/{lang}/search-result-page?q=…&size=�
 `size` is not a page limit — ask for 240 and you get all 228 matches — so there is no
 pagination to write. The response carries `COLOR` and `MATERIAL` facets with numeric ids
 that are **identical in every market** (`10003` is beige in `at/de`, `hu/hu` and `gb/en`
-alike), plus per-product price, rating, a white-background cutout, and usually a
-`CONTEXT_PRODUCT_IMAGE` — the product styled in a real room, which is what the card shows.
+alike), plus per-product price, rating, a white-background cutout, and a set of
+photographs.
+
+**Every card shows the product in a room.** A cutout on white is a catalogue listing, not
+something you can have an opinion about, so the harvester walks a preference chain —
+`CONTEXT` (the staged interior), then `INSPIRATIONAL`, then `FUNCTIONAL`, then
+`NON_STANDARDIZED`, then a colour variant's own contextual shot — and **drops the product
+entirely** if none of them exist. `FUNCTIONAL` sounds like a diagram but isn't: IKEA
+writes things like *"Framed black-and-white photo near green plant and stacked
+magazines"*. `MAIN` (the cutout) and `QUALITY` (a close-up of the weave) are never used as
+the card image; the cutout is kept only for list thumbnails, where a room shot at 54px is
+an unreadable smudge. `--allow-cutouts` keeps the dropped products if you want them.
 
 The harvest runs in three passes:
 
@@ -378,7 +388,7 @@ Four axes. Three of them are read off the retailer rather than guessed:
 | --- | --- | --- |
 | category (46 values) | 100% | the search query that found it |
 | colour (12) | ~87% | the variant's own design text |
-| material (15) | ~85% | IKEA's `MATERIAL` facet, queried per value per market |
+| material (15) | ~76% | IKEA's `MATERIAL` facet, queried per value per market |
 | adjectives | ~30% | the product's English alt text, through the room lexicon |
 
 Ten groups: Seating, Tables, Storage, Beds, Lighting, Soft furnishing, Decor, Kitchen,

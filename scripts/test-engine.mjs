@@ -756,7 +756,7 @@ function productPool() {
         typeLabel: category,
         url: `https://example.test/${category}-${i}`,
         image: `https://example.test/${category}-${i}.jpg`,
-        imageIsContext: true,
+        imageKind: 'CONTEXT_PRODUCT_IMAGE',
         cutout: null,
         price: { amount: 100 + i, currency: 'EUR' },
         rating: null,

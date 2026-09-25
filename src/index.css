@@ -889,8 +889,9 @@ code {
    Product mode
    --------------------------------------------------------------------------- */
 
-/* A cutout is a product floating on white; a room shot is a photograph. They want
-   opposite fits — `cover` crops a cutout's legs off, `contain` letterboxes a room. */
+/* Every product card is a room photograph, so `cover` is the default. This only applies
+   on the error path: if IKEA retires a staged shot the card falls back to the white
+   cutout, which needs `contain` or its legs get cropped off. */
 .card--product .card__image--cutout {
   object-fit: contain;
   background: #fff;

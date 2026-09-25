@@ -26,9 +26,14 @@ export interface Product {
   typeLabel: string
   /** The product page, in the right market. */
   url: string
-  /** The card image — the product styled in a room where one exists. */
+  /**
+   * The card image. Always the product photographed in a room — a white-background
+   * cutout is a catalogue listing, not something you can have an opinion about. Products
+   * with no room photograph anywhere in their image set are not harvested.
+   */
   image: string
-  imageIsContext: boolean
+  /** Which IKEA image type it came from, for auditing the catalog. */
+  imageKind: string | null
   /** The white-background shot. Always present; used as the thumbnail. */
   cutout: string | null
   price: Price | null

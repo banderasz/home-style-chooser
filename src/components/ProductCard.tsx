@@ -38,10 +38,9 @@ export default function ProductCard({
       aria-hidden={!interactive}
     >
       <img
-        // A cutout is a product on white; a context shot is the same product in a room.
-        // They want opposite framing — `contain` so nothing is cropped off the cutout,
-        // `cover` so the room fills the card.
-        className={`card__image${product.imageIsContext ? '' : ' card__image--cutout'}`}
+        // Always a room shot, so always `cover`. The cutout class exists only for the
+        // error path below, where a dead URL is swapped for the white-background copy.
+        className="card__image"
         src={product.image}
         alt={`${product.name} ${product.typeLabel}`}
         draggable={false}

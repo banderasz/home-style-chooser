@@ -58,6 +58,9 @@ const DRY = has('dry')
 // Skip the per-facet queries and tag colour/material from text alone. Turns a ~10 minute
 // run into a ~1 minute one at the cost of recall — useful while iterating on terms.
 const NO_FACETS = has('no-facets')
+// Keep products that only have a white-background cutout. Off by default: every card
+// should show the thing in a room, which is what a swipe is actually judging.
+const ALLOW_CUTOUTS = has('allow-cutouts')
 // Politeness delay between requests. This is someone else's storefront.
 const DELAY = Number(flag('delay', 400))
 
@@ -120,18 +123,47 @@ const imageOfType = (product, type) =>
   (product.allProductImage ?? []).find((i) => i.type === type)
 
 /**
- * The card image. A CONTEXT_PRODUCT_IMAGE is the product styled in a real room, which is
- * both a far better style signal than a cutout and visually consistent with the room
- * photos the rest of the app swipes. Not every product has one — cutouts are the
- * fallback, and `imageIsContext` records which you got so the UI can frame it
- * differently.
+ * Image types that show the product **in a room**, best first.
+ *
+ * `CONTEXT` is the staged interior shot and the obvious first choice. `INSPIRATIONAL` is
+ * rarer and just as good. `FUNCTIONAL` sounds like a diagram but isn't — IKEA writes
+ * things like "Framed black-and-white photo near green plant and stacked magazines" —
+ * it's a room shot that happens to demonstrate use. `NON_STANDARDIZED` is the ragged end
+ * of the same idea and comes last.
+ *
+ * Deliberately absent: `MAIN` (the white-background cutout) and `QUALITY` (a close-up of
+ * the fabric or the joint). Neither tells you what the thing looks like in a home, which
+ * is the only question a swipe is asking.
+ */
+const IN_ROOM_TYPES = [
+  'CONTEXT_PRODUCT_IMAGE',
+  'INSPIRATIONAL_IMAGE',
+  'FUNCTIONAL_PRODUCT_IMAGE',
+  'NON_STANDARDIZED_PRODUCT_IMAGE',
+]
+
+/**
+ * The card image, and the cutout kept alongside it for thumbnails.
+ *
+ * Returns `image: null` when the product has no in-room photograph anywhere — including
+ * on its colour variants, which often carry one when the parent doesn't. The caller drops
+ * those products: a wall of white-background cutouts is a catalogue listing, not a
+ * question about taste.
  */
 function pickImage(product) {
-  const context =
-    imageOfType(product, 'CONTEXT_PRODUCT_IMAGE') ??
-    imageOfType(product, 'FUNCTIONAL_PRODUCT_IMAGE')
   const cutout = product.mainImageUrl ?? imageOfType(product, 'MAIN_PRODUCT_IMAGE')?.url ?? null
-  return { image: context?.url ?? cutout, imageIsContext: Boolean(context), cutout }
+
+  for (const type of IN_ROOM_TYPES) {
+    const hit = imageOfType(product, type)
+    if (hit?.url) return { image: hit.url, imageKind: type, cutout }
+  }
+
+  // A variant in another colourway is still the same design in a real room. Better than
+  // losing the product, even though the cushion cover in the photo may be a shade off.
+  const variant = (product.gprDescription?.variants ?? []).find((v) => v.contextualImageUrl)
+  if (variant) return { image: variant.contextualImageUrl, imageKind: 'VARIANT_CONTEXT', cutout }
+
+  return { image: null, imageKind: null, cutout }
 }
 
 /**
@@ -330,9 +362,15 @@ async function marketPass(market, category, reference) {
   const materialsByItem = await materialPass(market, category, filters)
 
   const out = []
+  let noRoomShot = 0
   for (const p of items) {
-    const { image, imageIsContext, cutout } = pickImage(p)
-    if (!image || !p.pipUrl || !p.itemNoGlobal) continue
+    if (!p.pipUrl || !p.itemNoGlobal) continue
+    const { image, imageKind, cutout } = pickImage(p)
+    if (!image) {
+      // No photograph of it in a home anywhere in its image set.
+      noRoomShot++
+      if (!ALLOW_CUTOUTS) continue
+    }
 
     const ref = reference.byItem.get(p.itemNoGlobal)
     // Only the design text is read for colour: the alt text describes the whole staged
@@ -370,8 +408,8 @@ async function marketPass(market, category, reference) {
       name: p.name ?? '',
       typeLabel: p.typeName ?? '',
       url: p.pipUrl,
-      image,
-      imageIsContext,
+      image: image ?? cutout,
+      imageKind,
       cutout,
       price: priceOf(p),
       rating: ratingOf(p),
@@ -381,7 +419,7 @@ async function marketPass(market, category, reference) {
       attributes,
     })
   }
-  return { out, total }
+  return { out, total, noRoomShot }
 }
 
 /**
@@ -457,6 +495,7 @@ async function main() {
   if (categories.length === 0) throw new Error(`no category matches --category ${ONLY_CATEGORIES}`)
   if (markets.length === 0) throw new Error(`no market matches --market ${ONLY_MARKETS}`)
 
+  let droppedNoRoom = 0
   const { products, completed } = await loadExisting()
   const byId = new Map(products.map((p) => [p.id, p]))
 
@@ -476,12 +515,14 @@ async function main() {
     const tagged = [...reference.byItem.values()].filter((e) => e.colours.size > 0).length
 
     for (const market of pending) {
-      const { out, total } = await marketPass(market, category, reference, matchers)
+      const { out, total, noRoomShot } = await marketPass(market, category, reference)
+      droppedNoRoom += noRoomShot
       for (const entry of out) byId.set(entry.id, merge(byId.get(entry.id), entry))
       completed.add(`${category.id}|${market.id}`)
       log(
         `${category.id.padEnd(14)} ${market.id}  ${String(out.length).padStart(3)} kept` +
           ` / ${String(total).padStart(4)} matched` +
+          `${noRoomShot ? ` · ${noRoomShot} no room shot` : ''}` +
           `   ref ${reference.byItem.size} (${tagged} coloured)`,
       )
       await flush(byId, completed)
@@ -495,7 +536,22 @@ async function main() {
   log(`  with a colour     ${share(all.filter((p) => p.colours.length).length)}`)
   log(`  with a material   ${share(all.filter((p) => p.materials.length).length)}`)
   log(`  with an adjective ${share(all.filter((p) => p.attributes.length).length)}`)
-  log(`  context image     ${share(all.filter((p) => p.imageIsContext).length)}`)
+  const kinds = new Map()
+  for (const p of all) kinds.set(p.imageKind, (kinds.get(p.imageKind) ?? 0) + 1)
+  log(
+    `  in-room image     ${share(all.filter((p) => p.imageKind).length)}` +
+      `  (${[...kinds]
+        .filter(([k]) => k)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, n]) => `${k.replace('_PRODUCT_IMAGE', '').toLowerCase()} ${n}`)
+        .join(', ')})`,
+  )
+  if (droppedNoRoom > 0) {
+    log(
+      `  dropped ${droppedNoRoom} with no room photo` +
+        `${ALLOW_CUTOUTS ? ' (kept anyway: --allow-cutouts)' : ''}`,
+    )
+  }
 
   const thin = PRODUCT_CATEGORIES.map((c) => [
     c.id,
